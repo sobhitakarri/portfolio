@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 400" width="500" height="400">
+  <defs>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- PCB traces - horizontal -->
+  <polyline points="0,80 120,80 140,100 300,100" fill="none" stroke="#00ff88" stroke-width="1.2" opacity="0.25"/>
+  <polyline points="0,160 80,160 100,140 200,140 220,160 400,160" fill="none" stroke="#00ff88" stroke-width="1.2" opacity="0.2"/>
+  <polyline points="60,240 180,240 200,220 320,220" fill="none" stroke="#00ff88" stroke-width="1.2" opacity="0.2"/>
+  <polyline points="0,300 100,300 120,280 260,280 280,300 500,300" fill="none" stroke="#00ff88" stroke-width="1" opacity="0.15"/>
+  <polyline points="0,360 140,360 160,340 500,340" fill="none" stroke="#00ff88" stroke-width="1" opacity="0.12"/>
+
+  <!-- PCB traces - vertical -->
+  <polyline points="140,0 140,80 160,100 160,200 140,220 140,400" fill="none" stroke="#00ff88" stroke-width="1" opacity="0.18"/>
+  <polyline points="280,0 280,60 300,80 300,180 280,200 280,400" fill="none" stroke="#00ff88" stroke-width="1" opacity="0.15"/>
+  <polyline points="420,0 420,120 440,140 440,400" fill="none" stroke="#00ff88" stroke-width="1" opacity="0.12"/>
+
+  <!-- via dots -->
+  <circle cx="140" cy="80" r="4" fill="none" stroke="#00ff88" stroke-width="1.5" opacity="0.5" filter="url(#glow)"/>
+  <circle cx="140" cy="80" r="1.5" fill="#00ff88" opacity="0.8"/>
+
+  <circle cx="300" cy="100" r="4" fill="none" stroke="#00ff88" stroke-width="1.5" opacity="0.5"/>
+  <circle cx="300" cy="100" r="1.5" fill="#00ff88" opacity="0.8"/>
+
+  <circle cx="200" cy="140" r="4" fill="none" stroke="#00ff88" stroke-width="1.5" opacity="0.4"/>
+  <circle cx="200" cy="140" r="1.5" fill="#00ff88" opacity="0.7"/>
+
+  <circle cx="280" cy="160" r="4" fill="none" stroke="#00ff88" stroke-width="1.5" opacity="0.4"/>
+  <circle cx="280" cy="160" r="1.5" fill="#00ff88" opacity="0.7"/>
+
+  <circle cx="160" cy="200" r="4" fill="none" stroke="#00ff88" stroke-width="1.5" opacity="0.4"/>
+  <circle cx="160" cy="200" r="1.5" fill="#00ff88" opacity="0.7"/>
+
+  <circle cx="300" cy="220" r="4" fill="none" stroke="#00ff88" stroke-width="1.5" opacity="0.35"/>
+  <circle cx="300" cy="220" r="1.5" fill="#00ff88" opacity="0.6"/>
+
+  <circle cx="440" cy="140" r="4" fill="none" stroke="#00ff88" stroke-width="1.5" opacity="0.3"/>
+  <circle cx="440" cy="140" r="1.5" fill="#00ff88" opacity="0.5"/>
+
+  <!-- small IC chip outline top-right -->
+  <rect x="380" y="30" width="60" height="60" rx="4" fill="none" stroke="#00ff88" stroke-width="1" opacity="0.2"/>
+  <rect x="390" y="40" width="40" height="40" rx="2" fill="none" stroke="#00ff88" stroke-width="0.6" opacity="0.15"/>
+  <line x1="370" y1="45" x2="380" y2="45" stroke="#00ff88" stroke-width="1" opacity="0.2"/>
+  <line x1="370" y1="52" x2="380" y2="52" stroke="#00ff88" stroke-width="1" opacity="0.2"/>
+  <line x1="370" y1="59" x2="380" y2="59" stroke="#00ff88" stroke-width="1" opacity="0.2"/>
+  <line x1="440" y1="45" x2="450" y2="45" stroke="#00ff88" stroke-width="1" opacity="0.2"/>
+  <line x1="440" y1="52" x2="450" y2="52" stroke="#00ff88" stroke-width="1" opacity="0.2"/>
+  <line x1="440" y1="59" x2="450" y2="59" stroke="#00ff88" stroke-width="1" opacity="0.2"/>
+  <line x1="395" y1="20" x2="395" y2="30" stroke="#00ff88" stroke-width="1" opacity="0.2"/>
+  <line x1="405" y1="20" x2="405" y2="30" stroke="#00ff88" stroke-width="1" opacity="0.2"/>
+  <line x1="415" y1="20" x2="415" y2="30" stroke="#00ff88" stroke-width="1" opacity="0.2"/>
+  <line x1="395" y1="90" x2="395" y2="100" stroke="#00ff88" stroke-width="1" opacity="0.2"/>
+  <line x1="405" y1="90" x2="405" y2="100" stroke="#00ff88" stroke-width="1" opacity="0.2"/>
+  <line x1="415" y1="90" x2="415" y2="100" stroke="#00ff88" stroke-width="1" opacity="0.2"/>
+
+  <!-- resistor symbol bottom left -->
+  <line x1="20" y1="320" x2="50" y2="320" stroke="#00ff88" stroke-width="1" opacity="0.25"/>
+  <rect x="50" y="314" width="30" height="12" rx="2" fill="none" stroke="#00ff88" stroke-width="1" opacity="0.25"/>
+  <line x1="80" y1="320" x2="110" y2="320" stroke="#00ff88" stroke-width="1" opacity="0.25"/>
+
+  <!-- capacitor symbol -->
+  <line x1="180" y1="360" x2="210" y2="360" stroke="#00ff88" stroke-width="1" opacity="0.2"/>
+  <line x1="210" y1="352" x2="210" y2="368" stroke="#00ff88" stroke-width="1.5" opacity="0.25"/>
+  <line x1="216" y1="352" x2="216" y2="368" stroke="#00ff88" stroke-width="1.5" opacity="0.25"/>
+  <line x1="216" y1="360" x2="246" y2="360" stroke="#00ff88" stroke-width="1" opacity="0.2"/>
+</svg>

@@ -1,0 +1,80 @@
+K S V S Sobhita
+# sobhita1011@gmail.com
+
+ï linkedin.com/in/sobhita-karri
+
++ Bengaluru, 560035
+
+Summary
+An Electronics and Communication Engineering undergraduate specialising in VLSI design, RTL development, and
+functional verification. Brings hands-on experience with FPGA-based digital design using SystemVerilog, protocollevel hardware debugging, and discrete circuit implementation. Proficient in industry-standard EDA flows and seeking
+a front-end VLSI or RTL design role to contribute to silicon development and verification pipelines.
+
+Education
+Amrita School of Engineering
+B.Tech in Electronics and Communication Engineering
+
+Bengaluru, India
+
+Sri Venkateswara Jr. College
+Intermediate (MPC)
+
+2023 – Present
+GPA: 7.55 / 10.0
+2021 – 2023
+Visakhapatnam, India
+
+Technical Skills
+• SystemVerilog
+• Verilog HDL
+• VHDL (basic)
+• RTL Design
+
+• Functional Verification
+• Synthesis (Yosys)
+• DFT Basics
+• Physical Design
+
+• FPGA (Basys-3)
+• Vivado / Quartus
+• Keil uVision
+• Proteus / LTspice
+
+• Python
+• MATLAB
+• C / C++
+• Arduino IDE
+
+Projects
+Logic Analyzer using FPGA : A multi-channel digital signal analysis system for real-time protocol decoding and
+debugging
+Jul 2025 – Present
+• Designed a modular FPGA-based logic analyzer using SystemVerilog on the Basys-3 board, supporting SPI, I2C,
+and GPIO protocol decoding
+• Incorporated configurable trigger logic and an efficient ring buffer architecture to enable reliable real-time signal
+capture and analysis
+Laser-Based Wireless Communication : A system designed for wireless communication using laser technology
+Mar 2025 – Apr 2025
+• Developed a laser-based wireless communication system using HT12E & HT12D encoder-decoder ICs, BC547
+transistor-driven laser transmission, and photodiode reception
+• Integrated LM358 signal conditioning enabling addressable digital data transfer with visual output indicators
+Digital Clock : A project that involved creating a digital clock using discrete components
+Oct 2024 – Nov 2024
+• Designed and built a fully functional digital clock without a microcontroller using a 555 timer-based clock generation, CD4026 decade counters, and 7-segment LED displays
+• Implemented TTL logic for carry/reset control, assembled entirely on PCB
+Self-Balancing 2-Wheeler : A self-balancing two-wheeler project using Arduino IDE
+Apr 2024 – May 2024
+• Used servo motor and motor driver for moving the wheels and a virtual joystick (EZ-GUI) for controlling direction
+and balance in real time
+• Interfaced the control part with the hardware using a Bluetooth module for wireless communication
+
+Training & Certifications
+Foundation – Physical Design
+Open-Source EDA Tools
+• Studied each and every stage of Physical Design along with hands-on labs on Synthesis and DFT using open-source
+tools
+Building Conversational AI Applications
+NVIDIA Deep Learning Institute
+• Completed NVIDIA DLI “Get Ready” training, gaining foundational knowledge of AI, deep learning, and GPUaccelerated workflows with hands-on exposure to NVIDIA tools and environments
+
+

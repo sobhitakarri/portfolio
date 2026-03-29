@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect x="8" y="8" width="16" height="16" rx="2" fill="#0a0a0f" stroke="#00ff88" stroke-width="1.5"/>
+  <rect x="11" y="11" width="10" height="10" rx="1" fill="#00ff8822" stroke="#00ff88" stroke-width="0.5"/>
+  <!-- Pins left -->
+  <line x1="2" y1="12" x2="8" y2="12" stroke="#00ff88" stroke-width="1.5"/>
+  <line x1="2" y1="16" x2="8" y2="16" stroke="#00ff88" stroke-width="1.5"/>
+  <line x1="2" y1="20" x2="8" y2="20" stroke="#00ff88" stroke-width="1.5"/>
+  <!-- Pins right -->
+  <line x1="24" y1="12" x2="30" y2="12" stroke="#00ff88" stroke-width="1.5"/>
+  <line x1="24" y1="16" x2="30" y2="16" stroke="#00ff88" stroke-width="1.5"/>
+  <line x1="24" y1="20" x2="30" y2="20" stroke="#00ff88" stroke-width="1.5"/>
+  <!-- Notch -->
+  <path d="M14 8 A2 2 0 0 1 18 8" stroke="#00ff88" stroke-width="1" fill="none"/>
+  <!-- Die cross pattern -->
+  <line x1="13" y1="16" x2="19" y2="16" stroke="#00ff88" stroke-width="0.5" opacity="0.5"/>
+  <line x1="16" y1="13" x2="16" y2="19" stroke="#00ff88" stroke-width="0.5" opacity="0.5"/>
+</svg>
