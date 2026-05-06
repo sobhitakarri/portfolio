@@ -13,7 +13,6 @@ import Footer       from './components/Footer'
 const SKIP_KEY = 'sonnb_loader_seen'
 
 export default function App() {
-  // Skip loader after first visit in this session
   const [showLoader, setShowLoader] = useState(
     () => !sessionStorage.getItem(SKIP_KEY)
   )

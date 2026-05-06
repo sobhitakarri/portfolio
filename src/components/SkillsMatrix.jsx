@@ -3,54 +3,68 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useScrollFade } from '../hooks/useScrollFade'
 import { skillCategories } from '../data/skills'
 
-const BADGE_COLORS = {
-  ADVANCED:     { bg: 'rgba(0,255,136,0.12)', border: '#00ff8844', text: '#00ff88' },
-  INTERMEDIATE: { bg: 'rgba(124,58,237,0.12)', border: '#7c3aed44', text: '#7c3aed' },
-  JUNIOR:       { bg: 'rgba(136,146,164,0.12)', border: '#8892a444', text: '#8892a4' },
+const BADGE_STYLES = {
+  ADVANCED:     { bg: 'rgba(0,229,160,0.1)',    border: 'rgba(0,229,160,0.3)',    text: 'var(--accent)',  dot: 'var(--accent)' },
+  INTERMEDIATE: { bg: 'rgba(139,92,246,0.1)',   border: 'rgba(139,92,246,0.3)',   text: 'var(--violet)', dot: 'var(--violet)' },
+  JUNIOR:       { bg: 'rgba(56,189,248,0.08)',  border: 'rgba(56,189,248,0.25)',  text: 'var(--blue)',   dot: 'var(--blue)' },
 }
 
 function SkillBar({ name, level, badge, index }) {
+  const b = BADGE_STYLES[badge] || BADGE_STYLES.JUNIOR
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
-      style={{
-        background: '#13131f',
-        border: '1px solid #1e2030',
-        borderRadius: 4,
-        padding: '14px 16px',
-        transition: 'border-color 0.2s',
-      }}
-      whileHover={{ borderColor: '#00ff8833', y: -2 }}
+      transition={{ delay: index * 0.06, duration: 0.45, ease: [0.22,1,0.36,1] }}
+      className="card"
+      style={{ padding: '16px 18px' }}
+      whileHover={{ y: -3, transition: { duration: 0.2 } }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <span style={{ fontFamily: 'JetBrains Mono', fontSize: '0.82rem', color: '#c9d1d9' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <span style={{
+          fontFamily: 'Inter, sans-serif',
+          fontSize: '0.875rem',
+          fontWeight: 500,
+          color: 'var(--text-bright)',
+        }}>
           {name}
         </span>
         <div style={{
-          padding: '2px 8px',
-          borderRadius: 2,
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '3px 10px',
+          borderRadius: 100,
           fontSize: '0.65rem',
-          fontFamily: 'JetBrains Mono',
-          border: `1px solid ${BADGE_COLORS[badge].border}`,
-          background: BADGE_COLORS[badge].bg,
-          color: BADGE_COLORS[badge].text,
-          letterSpacing: '0.05em',
+          fontFamily: 'JetBrains Mono, monospace',
+          border: `1px solid ${b.border}`,
+          background: b.bg,
+          color: b.text,
+          letterSpacing: '0.08em',
+          fontWeight: 600,
         }}>
+          <span style={{ width: 5, height: 5, borderRadius: '50%', background: b.dot, display: 'inline-block' }} />
           {badge}
         </div>
       </div>
+
       <div className="skill-bar-bg">
         <motion.div
           className="skill-bar-fill"
           initial={{ width: 0 }}
           animate={{ width: `${level}%` }}
-          transition={{ duration: 0.8, delay: index * 0.05, ease: 'easeOut' }}
+          transition={{ duration: 0.9, delay: index * 0.06 + 0.2, ease: 'easeOut' }}
         />
       </div>
-      <div style={{ textAlign: 'right', marginTop: 4, fontFamily: 'JetBrains Mono', fontSize: '0.65rem', color: '#8892a4' }}>
-        {level}%
+
+      <div style={{
+        display: 'flex', justifyContent: 'space-between',
+        marginTop: 6,
+        fontFamily: 'JetBrains Mono, monospace',
+        fontSize: '0.65rem',
+        color: 'var(--text-muted)',
+      }}>
+        <span>Proficiency</span>
+        <span style={{ color: b.text }}>{level}%</span>
       </div>
     </motion.div>
   )
@@ -63,11 +77,10 @@ export default function SkillsMatrix() {
 
   return (
     <section id="skills" style={{ position: 'relative', zIndex: 2 }}>
+      <div className="section-divider" />
       <div className="section-wrapper">
         <div ref={titleRef} className="fade-up">
-          <p style={{ color: '#00ff88', fontFamily: 'JetBrains Mono', fontSize: '0.8rem', marginBottom: 8, letterSpacing: '0.15em' }}>
-            // 02. SKILLS
-          </p>
+          <p className="section-eyebrow">02. Skills</p>
           <h2 className="section-title">Skills <span className="accent">Matrix</span></h2>
           <p className="section-subtitle">Technical proficiency across the RTL-to-GDS stack.</p>
         </div>
@@ -75,54 +88,72 @@ export default function SkillsMatrix() {
         {/* Tab bar */}
         <div style={{
           display: 'flex',
-          gap: 4,
-          marginBottom: 32,
-          background: '#0f0f1a',
-          border: '1px solid #1e2030',
-          borderRadius: 4,
-          padding: 4,
+          gap: 6,
+          marginBottom: 36,
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 10,
+          padding: 5,
           flexWrap: 'wrap',
         }}>
-          {skillCategories.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveTab(cat.id)}
-              style={{
-                flex: 1,
-                minWidth: 120,
-                padding: '10px 16px',
-                background: activeTab === cat.id ? '#00ff88' : 'transparent',
-                border: 'none',
-                borderRadius: 2,
-                cursor: 'pointer',
-                fontFamily: 'JetBrains Mono',
-                fontSize: '0.78rem',
-                color: activeTab === cat.id ? '#0a0a0f' : '#8892a4',
-                fontWeight: activeTab === cat.id ? 600 : 400,
-                transition: 'all 0.2s',
-                letterSpacing: '0.05em',
-              }}
-            >
-              {cat.label}
-            </button>
-          ))}
+          {skillCategories.map(cat => {
+            const isActive = activeTab === cat.id
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setActiveTab(cat.id)}
+                style={{
+                  flex: 1,
+                  minWidth: 130,
+                  padding: '9px 16px',
+                  background: isActive
+                    ? 'linear-gradient(135deg, var(--accent), var(--blue))'
+                    : 'transparent',
+                  border: 'none',
+                  borderRadius: 7,
+                  cursor: 'pointer',
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: '0.83rem',
+                  fontWeight: isActive ? 600 : 400,
+                  color: isActive ? '#060610' : 'var(--text-muted)',
+                  transition: 'all 0.22s ease',
+                  letterSpacing: '0.01em',
+                  boxShadow: isActive ? '0 2px 12px rgba(0,229,160,0.25)' : 'none',
+                }}
+                onMouseEnter={e => {
+                  if (!isActive) {
+                    e.currentTarget.style.color = 'var(--text-bright)'
+                    e.currentTarget.style.background = 'var(--bg-hover)'
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (!isActive) {
+                    e.currentTarget.style.color = 'var(--text-muted)'
+                    e.currentTarget.style.background = 'transparent'
+                  }
+                }}
+              >
+                {cat.label}
+              </button>
+            )
+          })}
         </div>
 
         {/* Skills grid */}
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.22 }}
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-              gap: 12,
+              gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+              gap: 14,
             }}
           >
-            {activeCategory.skills.map((skill, i) => (
+            {activeCategory?.skills.map((skill, i) => (
               <SkillBar key={skill.name} {...skill} index={i} />
             ))}
           </motion.div>

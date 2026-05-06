@@ -1,610 +1,608 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import * as THREE from 'three'
 
-/* ──────────────────────────────────────────────────────────
-   PCB Trace Canvas — draws copper traces outward from center
-   ────────────────────────────────────────────────────────── */
-function PCBCanvas({ onComplete }) {
+/* ════════════════════════════════════════════════════════════
+   DNA HELIX — Three.js WebGL canvas
+   Uses window.innerWidth/Height to avoid clientWidth=0 bug
+   ════════════════════════════════════════════════════════════ */
+function DNAScene({ onPhaseEnd }) {
   const canvasRef = useRef(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    canvas.width  = window.innerWidth
-    canvas.height = window.innerHeight
+    if (!canvas) return
 
-    const cx = canvas.width  / 2
-    const cy = canvas.height / 2
-    const GREEN = '#00ff88'
-    const DIM   = '#00ff8833'
+    const W = window.innerWidth
+    const H = window.innerHeight
 
-    // Pre-define trace paths (horizontal + vertical from center)
-    const traces = []
-    const GRID = 40
+    /* ── Renderer directly into <canvas> element ── */
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    renderer.setSize(W, H, false)
+    renderer.setClearColor(0x000000, 0)
 
-    // Horizontal traces
-    for (let y = cy % GRID; y < canvas.height; y += GRID) {
-      traces.push({ x1: cx, y1: y, x2: canvas.width + 50, y2: y, dir: 'h' })
-      traces.push({ x1: cx, y1: y, x2: -50,               y2: y, dir: 'h' })
+    const scene  = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera(55, W / H, 0.1, 100)
+    camera.position.z = 6
+
+    /* ──────────────────────────────────────────────
+       BUILD PARTICLE DATA — 2 helix strands + rungs
+    ────────────────────────────────────────────── */
+    const STRAND = 200
+    const RUNGS  = 60
+    const COUNT  = STRAND * 2 + RUNGS
+
+    const origPos = new Float32Array(COUNT * 3)
+    const randDir = new Float32Array(COUNT * 3)
+    const aPhase  = new Float32Array(COUNT)
+    const aColor  = new Float32Array(COUNT * 3)  // named aColor to avoid Three.js auto-inject conflict
+
+    const C_TEAL   = new THREE.Color('#00e5a0')
+    const C_BLUE   = new THREE.Color('#38bdf8')
+    const C_VIOLET = new THREE.Color('#8b5cf6')
+
+    let idx = 0
+    const push = (x, y, z, col) => {
+      origPos[idx*3]=x; origPos[idx*3+1]=y; origPos[idx*3+2]=z
+      aColor[idx*3]=col.r; aColor[idx*3+1]=col.g; aColor[idx*3+2]=col.b  // stored per-particle
+      aPhase[idx] = Math.random() * Math.PI * 2
+      const a = Math.random()*Math.PI*2, b = Math.acos(2*Math.random()-1)
+      randDir[idx*3]=Math.sin(b)*Math.cos(a)
+      randDir[idx*3+1]=Math.sin(b)*Math.sin(a)
+      randDir[idx*3+2]=Math.cos(b)
+      idx++
     }
-    // Vertical traces
-    for (let x = cx % GRID; x < canvas.width; x += GRID) {
-      traces.push({ x1: x, y1: cy, x2: x, y2: canvas.height + 50, dir: 'v' })
-      traces.push({ x1: x, y1: cy, x2: x, y2: -50,                dir: 'v' })
+
+    // Strand A
+    for (let i = 0; i < STRAND; i++) {
+      const t = (i/STRAND - 0.5) * 7
+      push(Math.cos(t*1.5)*1.0, t*0.24, Math.sin(t*1.5)*1.0, C_TEAL)
+    }
+    // Strand B (offset π)
+    for (let i = 0; i < STRAND; i++) {
+      const t = (i/STRAND - 0.5) * 7
+      push(Math.cos(t*1.5+Math.PI)*1.0, t*0.24, Math.sin(t*1.5+Math.PI)*1.0, C_BLUE)
+    }
+    // Rungs
+    for (let i = 0; i < RUNGS; i++) {
+      const t = (i/RUNGS - 0.5) * 7
+      const fr = i/RUNGS
+      push((Math.random()-0.5)*2, t*0.24, (Math.random()-0.5)*2, C_VIOLET.clone().lerp(C_TEAL, fr))
     }
 
-    // Vias at intersections
-    const vias = []
-    for (let x = cx % GRID; x < canvas.width; x += GRID) {
-      for (let y = cy % GRID; y < canvas.height; y += GRID) {
-        if (Math.random() > 0.6) {
-          vias.push({ x, y, r: 3, delay: Math.random() * 800 })
+    /* ── BufferGeometry ── */
+    const geo = new THREE.BufferGeometry()
+    geo.setAttribute('position', new THREE.BufferAttribute(origPos.slice(), 3))
+    geo.setAttribute('aOrig',    new THREE.BufferAttribute(origPos, 3))
+    geo.setAttribute('aRandDir', new THREE.BufferAttribute(randDir, 3))
+    geo.setAttribute('aPhase',   new THREE.BufferAttribute(aPhase,  1))
+    geo.setAttribute('aColor',   new THREE.BufferAttribute(aColor,  3))
+
+    /* ── ShaderMaterial — GLSL glow dots + explode vortex ── */
+    const mat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime:    { value: 0 },
+        uExplode: { value: 0 },
+        uFade:    { value: 0 },
+      },
+      vertexShader: `
+        attribute vec3  aOrig;
+        attribute vec3  aRandDir;
+        attribute float aPhase;
+        attribute vec3  aColor;
+        uniform   float uTime;
+        uniform   float uExplode;
+        uniform   float uFade;
+        varying   vec3  vColor;
+        varying   float vBright;
+
+
+        void main(){
+          vColor = aColor;
+
+          // Gentle breathe
+          float b  = sin(uTime * 2.0 + aPhase) * 0.035;
+          vec3  p  = aOrig + vec3(b, b*0.5, b);
+
+          // Explode outward + twist vortex
+          p += aRandDir * uExplode * 5.5;
+          float tw = uExplode * 4.5;
+          float ca = cos(tw+aPhase), sa = sin(tw+aPhase);
+          p.xz  = vec2(p.x*ca - p.z*sa, p.x*sa + p.z*ca);
+
+          // Collapse to zero on fade
+          p *= 1.0 - uFade * 0.7;
+
+          gl_Position  = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+
+          float pulse  = 0.4 + 0.6 * sin(uTime * 3.0 + aPhase);
+          vBright      = pulse;
+          gl_PointSize = (2.8 + pulse * 2.0) * (1.0 - uFade * 0.85)
+                         * (320.0 / max(-gl_Position.z, 0.1));
         }
-      }
-    }
+      `,
+      fragmentShader: `
+        varying vec3  vColor;
+        varying float vBright;
+        uniform float uFade;
 
-    let start = null
-    const DURATION = 1200
+        void main(){
+          vec2  uv = gl_PointCoord - 0.5;
+          float r  = length(uv);
+          if(r > 0.5) discard;
 
-    function draw(timestamp) {
-      if (!start) start = timestamp
-      const elapsed = timestamp - start
-      const progress = Math.min(elapsed / DURATION, 1)
+          float core = 1.0 - smoothstep(0.0, 0.20, r);
+          float halo = 1.0 - smoothstep(0.20, 0.5, r);
+          float lum  = core + halo * 0.4 * (0.6 + vBright * 0.4);
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-      // Draw faint grid
-      ctx.strokeStyle = 'rgba(0,255,136,0.04)'
-      ctx.lineWidth = 1
-      for (let x = 0; x < canvas.width; x += GRID) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke()
-      }
-      for (let y = 0; y < canvas.height; y += GRID) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke()
-      }
-
-      // Draw traces growing outward
-      ctx.shadowColor = GREEN
-      ctx.shadowBlur  = 6
-      ctx.strokeStyle = GREEN
-      ctx.lineWidth   = 1.5
-
-      traces.forEach(t => {
-        const len = Math.hypot(t.x2 - t.x1, t.y2 - t.y1)
-        const drawn = len * progress
-
-        ctx.beginPath()
-        if (t.dir === 'h') {
-          const endX = t.x2 > t.x1 ? t.x1 + drawn : t.x1 - drawn
-          ctx.moveTo(t.x1, t.y1)
-          ctx.lineTo(endX, t.y1)
-        } else {
-          const endY = t.y2 > t.y1 ? t.y1 + drawn : t.y1 - drawn
-          ctx.moveTo(t.x1, t.y1)
-          ctx.lineTo(t.x1, endY)
+          gl_FragColor = vec4(vColor * lum * 1.3, lum * (1.0 - uFade));
         }
-        ctx.stroke()
-      })
-
-      // Draw vias
-      vias.forEach(v => {
-        if (elapsed > v.delay) {
-          const pulse = Math.sin((elapsed - v.delay) / 200) * 0.5 + 0.5
-          ctx.beginPath()
-          ctx.arc(v.x, v.y, v.r, 0, Math.PI * 2)
-          ctx.fillStyle = `rgba(0,255,136,${0.3 + pulse * 0.7})`
-          ctx.shadowBlur = 8 * pulse
-          ctx.fill()
-
-          // Via ring
-          ctx.beginPath()
-          ctx.arc(v.x, v.y, v.r + 2, 0, Math.PI * 2)
-          ctx.strokeStyle = `rgba(0,255,136,${0.2 + pulse * 0.4})`
-          ctx.lineWidth = 0.5
-          ctx.stroke()
-        }
-      })
-
-      // SMD component silhouettes
-      if (progress > 0.5) {
-        const compAlpha = (progress - 0.5) * 2
-        const components = [
-          { x: cx - 120, y: cy - 80,  w: 20, h: 8,  type: 'resistor' },
-          { x: cx + 100, y: cy + 60,  w: 16, h: 16, type: 'cap' },
-          { x: cx - 60,  y: cy + 100, w: 24, h: 10, type: 'resistor' },
-          { x: cx + 140, y: cy - 50,  w: 14, h: 14, type: 'cap' },
-          { x: cx - 150, y: cy + 30,  w: 20, h: 8,  type: 'resistor' },
-        ]
-        components.forEach(c => {
-          ctx.globalAlpha = compAlpha * 0.6
-          ctx.fillStyle = '#1a2a1a'
-          ctx.strokeStyle = GREEN
-          ctx.lineWidth = 0.8
-          ctx.shadowBlur = 4
-
-          if (c.type === 'resistor') {
-            ctx.fillRect(c.x - c.w/2, c.y - c.h/2, c.w, c.h)
-            ctx.strokeRect(c.x - c.w/2, c.y - c.h/2, c.w, c.h)
-            // End caps
-            ctx.fillStyle = 'rgba(0,255,136,0.3)'
-            ctx.fillRect(c.x - c.w/2,         c.y - c.h/2, 4, c.h)
-            ctx.fillRect(c.x + c.w/2 - 4,     c.y - c.h/2, 4, c.h)
-          } else {
-            ctx.beginPath()
-            ctx.arc(c.x, c.y, c.w/2, 0, Math.PI * 2)
-            ctx.fill()
-            ctx.stroke()
-          }
-          ctx.globalAlpha = 1
-        })
-      }
-
-      if (progress < 1) {
-        requestAnimationFrame(draw)
-      } else {
-        setTimeout(onComplete, 100)
-      }
-    }
-
-    requestAnimationFrame(draw)
-  }, [onComplete])
-
-  return <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
-}
-
-/* ──────────────────────────────────────────────────────────
-   Transistor Layer SVG — MOSFET gate array (VLSI cross-section)
-   ────────────────────────────────────────────────────────── */
-function TransistorLayer({ progress }) {
-  // GDSII Layer structure: Substrate, N-Well, Diffusion, Poly, Metal
-  const layers = [
-    { id: 'SUB', color: '#050510', label: 'SUBSTRATE', start: 0.0, end: 0.2 },
-    { id: 'NWELL', color: 'rgba(0,100,255,0.15)', label: 'N-WELL', start: 0.2, end: 0.4 },
-    { id: 'DIFF', color: 'rgba(0,255,136,0.2)', label: 'DIFFUSION', start: 0.4, end: 0.6 },
-    { id: 'POLY', color: 'rgba(255,50,80,0.12)', label: 'POLY-GATE', start: 0.6, end: 0.8 },
-    { id: 'MET', color: 'rgba(200,180,100,0.5)', label: 'METAL-1', start: 0.8, end: 1.0 },
-  ]
-
-  const rows = 6, cols = 10
-  const cw = 44, ch = 36
-
-  return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      <svg
-        viewBox={`0 0 ${cols * cw} ${rows * ch}`}
-        style={{ width: '100%', height: '100%' }}
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        {/* Substrate */}
-        <rect width={cols * cw} height={rows * ch} fill={layers[0].color} />
-        
-        {/* N-Well Layer */}
-        {progress > layers[1].start && (
-          <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            {Array.from({ length: rows * cols }).map((_, i) => {
-              const r = Math.floor(i / cols), c = i % cols
-              return <rect key={i} x={c*cw+2} y={r*ch+8} width={cw-4} height={ch-16} fill={layers[1].color} stroke="rgba(0,100,255,0.4)" strokeWidth="0.5" />
-            })}
-          </motion.g>
-        )}
-
-        {/* Diffusion Layer */}
-        {progress > layers[2].start && (
-          <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            {Array.from({ length: rows * cols }).map((_, i) => {
-              const r = Math.floor(i / cols), c = i % cols
-              return (
-                <g key={i}>
-                  <rect x={c*cw+4} y={r*ch+10} width={10} height={ch-20} fill={layers[2].color} stroke="rgba(0,255,136,0.5)" strokeWidth="0.5" />
-                  <rect x={c*cw+cw-14} y={r*ch+10} width={10} height={ch-20} fill={layers[2].color} stroke="rgba(0,255,136,0.5)" strokeWidth="0.5" />
-                </g>
-              )
-            })}
-          </motion.g>
-        )}
-
-        {/* Poly Layer */}
-        {progress > layers[3].start && (
-          <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            {Array.from({ length: rows * cols }).map((_, i) => {
-              const r = Math.floor(i / cols), c = i % cols
-              return <rect key={i} x={c*cw+14} y={r*ch+4} width={cw-28} height={ch-8} fill={layers[3].color} stroke="rgba(255,50,80,0.6)" strokeWidth="1" />
-            })}
-          </motion.g>
-        )}
-
-        {/* Metal Layer */}
-        {progress > layers[4].start && (
-          <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            {Array.from({ length: rows * cols }).map((_, i) => {
-              const r = Math.floor(i / cols), c = i % cols
-              return (
-                <g key={i}>
-                  <rect x={c*cw+7} y={r*ch+12} width={5} height={4} fill={layers[4].color} stroke="rgba(200,180,100,0.8)" strokeWidth="0.3" rx="0.5" />
-                  <rect x={c*cw+cw-11} y={r*ch+12} width={5} height={4} fill={layers[4].color} stroke="rgba(200,180,100,0.8)" strokeWidth="0.3" rx="0.5" />
-                  <line x1={c*cw} y1={r*ch+ch/2} x2={c*cw+cw} y2={r*ch+ch/2} stroke="rgba(200,180,100,0.3)" strokeWidth="1.5" />
-                </g>
-              )
-            })}
-          </motion.g>
-        )}
-      </svg>
-
-      {/* GDSII Layer Labels */}
-      <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {layers.map(layer => (
-          <motion.div
-            key={layer.id}
-            initial={{ x: -10, opacity: 0 }}
-            animate={{ x: progress > layer.start ? 0 : -10, opacity: progress > layer.start ? 1 : 0.2 }}
-            style={{ fontFamily: 'JetBrains Mono', fontSize: '0.6rem', color: progress > layer.start ? '#00ff88' : '#8892a4' }}
-          >
-            {progress > layer.start ? '●' : '○'} {layer.label}
-          </motion.div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-/* ──────────────────────────────────────────────────────────
-   IC Chip SVG — QFP package, zooms into die
-   ────────────────────────────────────────────────────────── */
-function ChipZoom({ phase, zoomProgress }) {
-  const scale = 1 + zoomProgress * 8
-  const opacity = Math.min(zoomProgress * 3, 1)
-  const chipOpacity = Math.max(1 - zoomProgress * 2, 0)
-
-  return (
-    <div style={{ position: 'relative', width: 300, height: 300 }}>
-      {/* QFP Chip Package */}
-      <motion.div
-        style={{ position: 'absolute', inset: 0, opacity: chipOpacity }}
-        animate={{ scale: scale }}
-        transition={{ duration: 0, ease: 'linear' }}
-      >
-        <svg viewBox="0 0 300 300" width="300" height="300" xmlns="http://www.w3.org/2000/svg">
-          {/* Package body */}
-          <img
-            src="/404-chip.svg"
-            alt="Silicon Die"
-            style={{ width: '100%', height: '100%', filter: 'drop-shadow(0 0 10px #00ff8844)' }}
-          />
-        </svg>
-      </motion.div>
-
-      {/* Transistor layout that fades in as we zoom in */}
-      <motion.div
-        style={{
-          position: 'absolute', inset: 0,
-          opacity: opacity,
-          overflow: 'hidden',
-          borderRadius: 4,
-        }}
-      >
-        <TransistorLayer progress={zoomProgress} />
-      </motion.div>
-    </div>
-  )
-}
-
-/* ──────────────────────────────────────────────────────────
-   Boot Sequence Terminal
-   ────────────────────────────────────────────────────────── */
-const BOOT_LINES = [
-  { text: 'BIOS v2.1.0 — Sobhita Chip Inc.', delay: 0,   color: '#8892a4' },
-  { text: 'Initializing silicon lattice...... OK', delay: 150, color: '#00ff88' },
-  { text: 'Verifying GDSII layer stack....... OK', delay: 300, color: '#00ff88' },
-  { text: 'Loading RTL netlist (2847 cells)... OK', delay: 450, color: '#00ff88' },
-  { text: 'Running gate-level simulation...... OK', delay: 600, color: '#00ff88' },
-  { text: 'CTS: Clock Tree Synthesis.......... OK', delay: 750, color: '#8892a4' },
-  { text: 'Verifying setup/hold timings....... PASS', delay: 900, color: '#00ff88' },
-  { text: 'Final LVS & DRC check.............. CLEAN', delay: 1050, color: '#00ff88' },
-  { text: 'Booting portfolio kernel v1.0.0...', delay: 1200, color: '#7c3aed' },
-  { text: '>> SYSTEM READY <<', delay: 1400, color: '#00ff88' },
-]
-
-function LogicGatePropagation({ progress, visibleLines }) {
-  const gates = [
-    { type: 'NOT', x: 20, y: 10 },
-    { type: 'AND', x: 80, y: 10 },
-    { type: 'XOR', x: 140, y: 10 },
-    { type: 'OR',  x: 200, y: 10 },
-  ]
-
-  return (
-    <div style={{ marginTop: 24, padding: '10px 0', borderTop: '1px solid #1e2030' }}>
-      <svg width="240" height="40" viewBox="0 0 240 40">
-        {gates.map((g, i) => (
-          <g key={i}>
-            {/* Connection lines */}
-            {i < gates.length - 1 && (
-              <line x1={g.x + 30} y1={g.y + 10} x2={gates[i+1].x} y2={gates[i+1].y + 10} stroke="#1e2030" strokeWidth="1" />
-            )}
-            {/* Logic pulse propagation */}
-            {visibleLines.length > i * 2 && (
-              <motion.circle
-                initial={{ cx: g.x, cy: g.y + 10 }}
-                animate={{ cx: gates[i+1] ? gates[i+1].x : g.x + 30 }}
-                transition={{ duration: 0.5 }}
-                r="3"
-                fill="#00ff88"
-                style={{ filter: 'drop-shadow(0 0 4px #00ff88)' }}
-              />
-            )}
-            {/* Gate symbol placeholders */}
-            <rect x={g.x} y={g.y} width="30" height="20" rx="2" fill="#0f0f1a" stroke="#00ff8844" strokeWidth="1" />
-            <text x={g.x + 15} y={g.y + 14} textAnchor="middle" fill="#00ff8888" fontSize="8" fontFamily="JetBrains Mono">
-              {g.type}
-            </text>
-          </g>
-        ))}
-      </svg>
-      <div style={{ color: '#00ff8866', fontSize: '0.65rem', fontFamily: 'JetBrains Mono', marginTop: 4 }}>
-        PROPAGATION: {visibleLines.length > 0 ? 'ACTIVE' : 'IDLE'} | CLK: 100MHz
-      </div>
-    </div>
-  )
-}
-
-function BootSequence({ onComplete }) {
-  const [visibleLines, setVisibleLines] = useState([])
-  const [progress, setProgress] = useState(0)
-
-  useEffect(() => {
-    const timers = []
-    BOOT_LINES.forEach((line, i) => {
-      timers.push(setTimeout(() => {
-        setVisibleLines(prev => [...prev, line])
-      }, line.delay))
+      `,
+      transparent:  true,
+      depthWrite:   false,
+      blending:     THREE.AdditiveBlending,
     })
 
-    // Progress bar
-    const interval = setInterval(() => {
-      setProgress(p => {
-        if (p >= 100) { clearInterval(interval); return 100 }
-        return p + 2
-      })
-    }, 20)
+    const points = new THREE.Points(geo, mat)
+    scene.add(points)
 
-    timers.push(setTimeout(onComplete, 1600))
-    return () => { timers.forEach(clearTimeout); clearInterval(interval) }
-  }, [onComplete])
+    /* ── Timeline uniforms ── */
+    let explodeT = -1, fadeT = -1, phaseDone = false
+    const startTime = performance.now()
+    let raf
+
+    const tick = () => {
+      raf = requestAnimationFrame(tick)
+      const t = (performance.now() - startTime) / 1000
+      mat.uniforms.uTime.value = t
+
+      points.rotation.y = t * 0.3
+
+      if (t > 1.6 && explodeT < 0) explodeT = t
+      if (explodeT > 0) {
+        const ep = Math.min((t - explodeT) / 1.1, 1)
+        mat.uniforms.uExplode.value = ep
+
+        if (ep > 0.65 && fadeT < 0) fadeT = t
+      }
+      if (fadeT > 0) {
+        const fp = Math.min((t - fadeT) / 0.75, 1)
+        mat.uniforms.uFade.value = fp
+        if (fp >= 1 && !phaseDone) { phaseDone = true; onPhaseEnd() }
+      }
+
+      renderer.render(scene, camera)
+    }
+    tick()
+
+    const onResize = () => {
+      const nW = window.innerWidth, nH = window.innerHeight
+      camera.aspect = nW / nH
+      camera.updateProjectionMatrix()
+      renderer.setSize(nW, nH, false)
+    }
+    window.addEventListener('resize', onResize)
+
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('resize', onResize)
+      renderer.dispose()
+      geo.dispose()
+      mat.dispose()
+    }
+  }, [onPhaseEnd])
 
   return (
-    <div style={{
-      fontFamily: 'JetBrains Mono, monospace',
-      fontSize: '0.78rem',
-      color: '#8892a4',
-      width: 480,
-      maxWidth: '90vw',
-    }}>
-      {visibleLines.map((line, i) => (
-        <motion.div
-          key={i}
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          style={{ color: line.color, padding: '2px 0', lineHeight: 1.6 }}
-        >
-          {line.text}
-        </motion.div>
-      ))}
-
-      {/* Logic Gate Propagation Visualizer */}
-      <LogicGatePropagation progress={progress} visibleLines={visibleLines} />
-
-      {/* Progress bar */}
-      <div style={{ marginTop: 20, background: '#1e2030', height: 4, borderRadius: 2, overflow: 'hidden' }}>
-        <motion.div
-          style={{
-            height: '100%',
-            background: 'linear-gradient(90deg, #00ff88, #00cc6a)',
-            boxShadow: '0 0 8px #00ff88',
-            borderRadius: 2,
-            width: `${progress}%`,
-          }}
-        />
-      </div>
-      <div style={{ color: '#00ff8888', marginTop: 6, fontSize: '0.7rem' }}>
-        {progress < 100 ? `LOADING... ${progress}%` : 'COMPLETE [100%]'}
-      </div>
-    </div>
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: 'absolute',
+        inset: 0,
+        width: '100%',
+        height: '100%',
+        display: 'block',
+      }}
+    />
   )
 }
 
-/* ──────────────────────────────────────────────────────────
-   Main Loader
-   ────────────────────────────────────────────────────────── */
-export default function Loader({ onComplete }) {
-  const [phase, setPhase] = useState(0)
-  // 0 = PCB traces, 1 = chip zoom, 2 = boot sequence, 3 = wipe out
-  const [zoomProgress, setZoomProgress] = useState(0)
-  const [showSkip, setShowSkip] = useState(false)
-  const animFrameRef = useRef(null)
-  const startTimeRef = useRef(null)
+/* ════════════════════════════════════════════════════════════
+   CHIP FLOORPLAN 3D — IC die with rising functional blocks
+   + signal particles routing between them (Three.js / WebGL)
+   ════════════════════════════════════════════════════════════ */
+const BLOCKS = [
+  { id:'CORE',   x:0,    z:0,    w:1.4, d:1.4, maxH:0.55, color:'#00e5a0', label:'PROC CORE',  delay:0    },
+  { id:'CACHE',  x:-1.3, z:0,    w:0.7, d:0.9, maxH:0.35, color:'#38bdf8', label:'L2 CACHE',   delay:300  },
+  { id:'BRAM',   x:1.3,  z:0,    w:0.7, d:0.9, maxH:0.35, color:'#8b5cf6', label:'BRAM',       delay:500  },
+  { id:'DSP',    x:0,    z:-1.3, w:0.9, d:0.6, maxH:0.28, color:'#f59e0b', label:'DSP',        delay:700  },
+  { id:'PLL',    x:-1.3, z:-1.1, w:0.5, d:0.5, maxH:0.22, color:'#e2e8f0', label:'PLL',        delay:900  },
+  { id:'GPIO',   x:1.3,  z:-1.1, w:0.5, d:0.5, maxH:0.18, color:'#38bdf8', label:'GPIO',       delay:1100 },
+  { id:'IO_N',   x:0,    z: 1.5, w:2.8, d:0.22,maxH:0.1,  color:'#00e5a0', label:'IO RING N',  delay:1300 },
+  { id:'IO_S',   x:0,    z:-1.9, w:2.8, d:0.22,maxH:0.1,  color:'#00e5a0', label:'IO RING S',  delay:1400 },
+]
 
-  // Show skip after 1s
+const ROUTES = [
+  ['CORE','CACHE'],['CORE','BRAM'],['CORE','DSP'],
+  ['CACHE','IO_N'],['BRAM','GPIO'],['PLL','CORE'],['DSP','IO_S'],
+]
+
+function ChipFloorplan3D({ onDone }) {
+  const canvasRef = useRef(null)
+
   useEffect(() => {
-    const t = setTimeout(() => setShowSkip(true), 1000)
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const W = window.innerWidth, H = window.innerHeight
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true })
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    renderer.setSize(W, H, false)
+    renderer.shadowMap.enabled = true
+    renderer.setClearColor(0x000000, 0)
+
+    const scene  = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera(45, W/H, 0.1, 100)
+    camera.position.set(0, 5.5, 5)
+    camera.lookAt(0, 0, 0)
+
+    /* ── Lighting ── */
+    scene.add(new THREE.AmbientLight(0x111122, 1.5))
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.6)
+    dirLight.position.set(3, 8, 4)
+    scene.add(dirLight)
+
+    /* ── Die substrate (flat PCB base) ── */
+    const subGeo = new THREE.BoxGeometry(3.6, 0.05, 4.4)
+    const subMat = new THREE.MeshStandardMaterial({ color:0x0a0a1a, roughness:0.8, metalness:0.3 })
+    const substrate = new THREE.Mesh(subGeo, subMat)
+    substrate.position.y = -0.025
+    scene.add(substrate)
+
+    /* ── Grid lines on substrate ── */
+    const gridHelper = new THREE.GridHelper(4, 20, 0x1e2038, 0x1e2038)
+    gridHelper.position.y = 0.01
+    scene.add(gridHelper)
+
+    /* ── Build block meshes ── */
+    const blockMeshes = {}
+    const blockTargetH = {}
+    BLOCKS.forEach(b => {
+      const col = new THREE.Color(b.color)
+      // Main filled block
+      const geo  = new THREE.BoxGeometry(b.w, 0.001, b.d)
+      const mat  = new THREE.MeshStandardMaterial({
+        color: col, roughness:0.3, metalness:0.6,
+        emissive: col, emissiveIntensity: 0.0,
+        transparent: true, opacity: 0.0,
+      })
+      const mesh = new THREE.Mesh(geo, mat)
+      mesh.position.set(b.x, 0, b.z)
+      scene.add(mesh)
+
+      // Wireframe edges
+      const edges   = new THREE.EdgesGeometry(new THREE.BoxGeometry(b.w, 0.001, b.d))
+      const edgeMat = new THREE.LineBasicMaterial({ color: col, transparent:true, opacity:0 })
+      const wire    = new THREE.LineSegments(edges, edgeMat)
+      wire.position.set(b.x, 0, b.z)
+      scene.add(wire)
+
+      blockMeshes[b.id] = { mesh, wire, mat, edgeMat, col, b }
+      blockTargetH[b.id] = 0
+    })
+
+    /* ── Animate block rise after delay ── */
+    BLOCKS.forEach(b => {
+      setTimeout(() => { blockTargetH[b.id] = b.maxH }, b.delay)
+    })
+
+    /* ── Routing trace lines ── */
+    const traceGroup = new THREE.Group()
+    scene.add(traceGroup)
+    const traceLines = []
+    ROUTES.forEach(([aId, bId]) => {
+      const ba = BLOCKS.find(x=>x.id===aId)
+      const bb = BLOCKS.find(x=>x.id===bId)
+      if (!ba || !bb) return
+      const pts = [
+        new THREE.Vector3(ba.x, 0.02, ba.z),
+        new THREE.Vector3((ba.x+bb.x)/2, 0.02, (ba.z+bb.z)/2 + 0.1),
+        new THREE.Vector3(bb.x, 0.02, bb.z),
+      ]
+      const curve = new THREE.CatmullRomCurve3(pts)
+      const tGeo  = new THREE.BufferGeometry().setFromPoints(curve.getPoints(32))
+      const tMat  = new THREE.LineBasicMaterial({
+        color: new THREE.Color(BLOCKS.find(x=>x.id===aId).color),
+        transparent: true, opacity: 0,
+        blending: THREE.AdditiveBlending,
+      })
+      const line = new THREE.Line(tGeo, tMat)
+      traceGroup.add(line)
+      traceLines.push({ line, tMat, curve, ba, bb })
+    })
+
+    /* ── Flow particles on routing traces ── */
+    const flowParticles = traceLines.map(tr => ({
+      ...tr,
+      t: Math.random(),
+      speed: 0.004 + Math.random() * 0.004,
+    }))
+    const flowGeo = new THREE.BufferGeometry()
+    const flowPos = new Float32Array(flowParticles.length * 3)
+    flowGeo.setAttribute('position', new THREE.BufferAttribute(flowPos, 3))
+    const flowMat = new THREE.PointsMaterial({
+      size: 0.08, color: 0x00e5a0,
+      transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    })
+    const flowPoints = new THREE.Points(flowGeo, flowMat)
+    scene.add(flowPoints)
+
+    /* ── Progress counter ── */
+    let progress = 0
+    const totalDuration = 2800
+    const startTime = performance.now()
+    let raf, done = false
+
+    /* ── Labels (HTML overlay — positioned via project) ── */
+    // We'll skip HTML labels to keep it pure WebGL
+
+    const tick = () => {
+      raf = requestAnimationFrame(tick)
+      const elapsed = performance.now() - startTime
+      progress = Math.min(elapsed / totalDuration, 1)
+
+      /* Rise blocks */
+      BLOCKS.forEach(b => {
+        const bm = blockMeshes[b.id]
+        const tH = blockTargetH[b.id]
+        if (tH === 0) return
+        const curH = bm.mesh.scale.y === 1 ? 0.001 : bm.mesh.geometry.parameters.height * bm.mesh.scale.y
+        // Lerp height via scale
+        const newH = Math.min((bm.mesh.geometry.parameters.height * bm.mesh.scale.y || 0.001) + tH * 0.04, tH)
+        const sc   = newH / bm.mesh.geometry.parameters.height
+        bm.mesh.scale.y = sc
+        bm.mesh.position.y = newH / 2
+        bm.wire.scale.y   = sc
+        bm.wire.position.y = newH / 2
+
+        const ramp = Math.min(sc / (tH / bm.b.maxH), 1)
+        bm.mat.opacity = ramp * 0.75
+        bm.mat.emissiveIntensity = ramp * 0.4
+        bm.edgeMat.opacity = ramp * 0.9
+      })
+
+      /* Fade in routing traces after first 4 blocks rise */
+      const traceFade = Math.max(0, Math.min((progress - 0.45) / 0.3, 1))
+      traceLines.forEach(tr => { tr.tMat.opacity = traceFade * 0.5 })
+      flowMat.opacity = traceFade * 0.85
+
+      /* Move flow particles */
+      flowParticles.forEach((fp, i) => {
+        fp.t += fp.speed
+        if (fp.t > 1) fp.t = 0
+        const pt = fp.curve.getPoint(fp.t)
+        flowPos[i*3]=pt.x; flowPos[i*3+1]=0.05; flowPos[i*3+2]=pt.z
+      })
+      flowGeo.attributes.position.needsUpdate = true
+
+      /* Slow camera orbit */
+      const angle = performance.now() * 0.0003
+      camera.position.x = Math.sin(angle) * 6.5
+      camera.position.z = Math.cos(angle) * 5.5
+      camera.position.y = 4.5 + Math.sin(angle * 0.5) * 0.5
+      camera.lookAt(0, 0.4, 0)
+
+      renderer.render(scene, camera)
+
+      if (progress >= 1 && !done) {
+        done = true
+        setTimeout(onDone, 400)
+      }
+    }
+    tick()
+
+    const onResize = () => {
+      const nW=window.innerWidth, nH=window.innerHeight
+      camera.aspect=nW/nH; camera.updateProjectionMatrix()
+      renderer.setSize(nW,nH,false)
+    }
+    window.addEventListener('resize', onResize)
+
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('resize', onResize)
+      renderer.dispose()
+    }
+  }, [onDone])
+
+  return (
+    <>
+      <canvas ref={canvasRef} style={{ position:'absolute', inset:0, width:'100%', height:'100%', display:'block' }} />
+      {/* Progress ring overlay */}
+      <div style={{
+        position:'absolute', bottom:40, left:'50%', transform:'translateX(-50%)',
+        fontFamily:'JetBrains Mono,monospace', fontSize:'0.68rem',
+        color:'rgba(0,229,160,0.5)', letterSpacing:'0.15em', textAlign:'center',
+        pointerEvents:'none',
+      }}>
+        <div style={{ color:'rgba(0,229,160,0.35)', fontSize:'0.6rem', marginBottom:4 }}>
+          IC FLOORPLAN SYNTHESIS
+        </div>
+      </div>
+    </>
+  )
+}
+
+/* ════════════════════════════════════════════════════════════
+   MAIN LOADER
+   ════════════════════════════════════════════════════════════ */
+export default function Loader({ onComplete }) {
+  const [phase,    setPhase]    = useState('dna')   // dna | log
+  const [showSkip, setShowSkip] = useState(false)
+  const [exiting,  setExiting]  = useState(false)
+
+  const doExit = useCallback(() => {
+    if (exiting) return
+    setExiting(true)
+    setTimeout(onComplete, 650)
+  }, [exiting, onComplete])
+
+  useEffect(() => {
+    const t = setTimeout(() => setShowSkip(true), 1500)
     return () => clearTimeout(t)
   }, [])
 
-  // Zoom animation in phase 1
-  useEffect(() => {
-    if (phase !== 1) return
-    startTimeRef.current = null
-    const ZOOM_DURATION = 1300
-
-    const animate = (timestamp) => {
-      if (!startTimeRef.current) startTimeRef.current = timestamp
-      const elapsed = timestamp - startTimeRef.current
-      const p = Math.min(elapsed / ZOOM_DURATION, 1)
-      setZoomProgress(p)
-      if (p < 1) {
-        animFrameRef.current = requestAnimationFrame(animate)
-      } else {
-        setTimeout(() => setPhase(2), 200)
-      }
-    }
-    animFrameRef.current = requestAnimationFrame(animate)
-    return () => cancelAnimationFrame(animFrameRef.current)
-  }, [phase])
-
-  const handleSkip = () => {
-    cancelAnimationFrame(animFrameRef.current)
-    setPhase(3)
-    setTimeout(onComplete, 600)
-  }
-
-  const handlePCBComplete = () => setPhase(1)
-  const handleBootComplete = () => {
-    setPhase(3)
-    setTimeout(onComplete, 700)
-  }
-
   return (
     <AnimatePresence>
-      {phase < 3 && (
+      {!exiting && (
         <motion.div
           key="loader"
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.7, ease: 'easeInOut' }}
+          transition={{ duration: 0.65, ease: 'easeInOut' }}
           style={{
-            position: 'fixed', inset: 0, zIndex: 9999,
-            background: '#0a0a0f',
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            background: '#060610',
             display: 'flex',
-            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
             overflow: 'hidden',
           }}
         >
-          {/* Phase 0 — PCB Traces */}
-          {phase === 0 && <PCBCanvas onComplete={handlePCBComplete} />}
-
-          {/* Phase 1 — Chip Zoom */}
-          {phase === 1 && (
-            <>
-              <PCBCanvas onComplete={() => {}} />
-              <motion.div
-                initial={{ opacity: 0, scale: 0.5 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.4 }}
-                style={{ position: 'relative', zIndex: 10 }}
-              >
-                <ChipZoom phase={phase} zoomProgress={zoomProgress} />
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-                style={{
-                  position: 'relative', zIndex: 10,
-                  marginTop: 24,
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontSize: '0.75rem',
-                  color: '#00ff8888',
-                  letterSpacing: '0.15em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                {zoomProgress < 0.5
-                  ? '// zooming to die surface...'
-                  : '// transistor layer visible — MOSFET gate array'
-                }
-              </motion.div>
-            </>
-          )}
-
-          {/* Phase 2 — Boot Sequence */}
-          {phase === 2 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3 }}
-              style={{
-                position: 'relative', zIndex: 10,
-                background: 'rgba(10,10,15,0.95)',
-                border: '1px solid #00ff8833',
-                borderRadius: 4,
-                padding: '28px 32px',
-              }}
-            >
-              {/* Terminal header */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                marginBottom: 16,
-                paddingBottom: 12,
-                borderBottom: '1px solid #1e2030',
-              }}>
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff5f56' }} />
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ffbd2e' }} />
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#00ff88' }} />
-                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.7rem', color: '#8892a4', marginLeft: 8 }}>
-                  Sobhita — boot sequence
-                </span>
-              </div>
-              <BootSequence onComplete={handleBootComplete} />
-            </motion.div>
-          )}
-
-          {/* Scanline sweep overlay on phase change */}
-          {phase === 0 && (
-            <div style={{
-              position: 'absolute', inset: 0, pointerEvents: 'none',
-              background: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,255,136,0.01) 3px, rgba(0,255,136,0.01) 4px)',
-            }} />
-          )}
-
-          {/* Skip button */}
+          {/* ── THREE.JS DNA CANVAS ── */}
           <AnimatePresence>
-            {showSkip && (
-              <motion.button
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={handleSkip}
-                style={{
-                  position: 'absolute', bottom: 32, right: 32,
-                  background: 'transparent',
-                  border: '1px solid #00ff8844',
-                  color: '#8892a4',
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontSize: '0.75rem',
-                  padding: '8px 16px',
-                  cursor: 'pointer',
-                  letterSpacing: '0.1em',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={e => {
-                  e.target.style.borderColor = '#00ff88'
-                  e.target.style.color = '#00ff88'
-                }}
-                onMouseLeave={e => {
-                  e.target.style.borderColor = '#00ff8844'
-                  e.target.style.color = '#8892a4'
-                }}
+            {phase === 'dna' && (
+              <motion.div key="dna-wrap"
+                style={{ position:'absolute', inset:0, zIndex:0 }}
+                exit={{ opacity:0 }} transition={{ duration:0.5 }}
               >
-                [ SKIP INTRO ]
-              </motion.button>
+                <DNAScene onPhaseEnd={() => setPhase('log')} />
+              </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Corner decorators */}
-          {[['top-4 left-4 border-t-2 border-l-2',''], ['top-4 right-4 border-t-2 border-r-2',''], ['bottom-4 left-4 border-b-2 border-l-2',''], ['bottom-4 right-4 border-b-2 border-r-2','']].map(([cls], i) => (
+          {/* ── THREE.JS CHIP FLOORPLAN CANVAS ── */}
+          <AnimatePresence>
+            {phase === 'log' && (
+              <motion.div key="chip-wrap"
+                style={{ position:'absolute', inset:0, zIndex:0 }}
+                initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+                transition={{ duration:0.6 }}
+              >
+                <ChipFloorplan3D onDone={doExit} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Vignette — lighter for chip phase so 3D is visible */}
+          <div style={{
+            position:'absolute', inset:0, pointerEvents:'none', zIndex:1,
+            background: phase === 'log'
+              ? 'radial-gradient(ellipse at center, transparent 50%, #060610 100%)'
+              : 'radial-gradient(ellipse at center, transparent 20%, #060610 85%)',
+            transition: 'background 0.6s ease',
+          }}/>
+
+          {/* ── CENTER UI ── */}
+          <div style={{ position:'relative', zIndex:10, textAlign:'center' }}>
+            <AnimatePresence mode="wait">
+
+              {phase === 'dna' && (
+                <motion.div key="dna-ui"
+                  initial={{opacity:0,y:14}} animate={{opacity:1,y:0}}
+                  exit={{opacity:0,scale:0.9}}
+                  transition={{delay:0.3, duration:0.6, ease:[0.22,1,0.36,1]}}
+                >
+                  <div style={{
+                    fontFamily:'JetBrains Mono,monospace',
+                    fontSize:'0.6rem', color:'rgba(0,229,160,0.25)',
+                    letterSpacing:'0.35em', textTransform:'uppercase', marginBottom:12,
+                  }}>
+                    Sobhita Chip Inc. · REV 1.0
+                  </div>
+
+                  <div style={{
+                    fontFamily:'Outfit,sans-serif', fontWeight:800,
+                    fontSize:'clamp(3rem,9vw,6rem)',
+                    letterSpacing:'-0.04em', lineHeight:1,
+                    background:'linear-gradient(135deg,#00e5a0 0%,#38bdf8 50%,#8b5cf6 100%)',
+                    WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
+                    backgroundClip:'text',
+                    filter:'drop-shadow(0 0 40px rgba(0,229,160,0.55))',
+                  }}>
+                    SONNB
+                  </div>
+
+                  <motion.div
+                    initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.9}}
+                    style={{
+                      fontFamily:'JetBrains Mono,monospace',
+                      fontSize:'0.72rem', color:'rgba(90,100,120,0.8)',
+                      letterSpacing:'0.22em', marginTop:14,
+                    }}
+                  >
+                    RTL · FPGA · VLSI
+                  </motion.div>
+                </motion.div>
+              )}
+
+              {phase === 'log' && (
+                <motion.div key="chip-ui"
+                  initial={{opacity:0}} animate={{opacity:1}}
+                  transition={{duration:0.5}}
+                  style={{ position:'absolute', inset:0, pointerEvents:'none' }}
+                />
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Corner brackets */}
+          {[
+            {top:20,left:20,   borderTopWidth:2,borderLeftWidth:2},
+            {top:20,right:20,  borderTopWidth:2,borderRightWidth:2},
+            {bottom:20,left:20, borderBottomWidth:2,borderLeftWidth:2},
+            {bottom:20,right:20,borderBottomWidth:2,borderRightWidth:2},
+          ].map((s,i)=>(
             <div key={i} style={{
-              position: 'absolute',
-              width: 24, height: 24,
-              borderColor: '#00ff8844',
-              borderStyle: 'solid',
-              borderWidth: 0,
-              ...(i === 0 ? { top: 16, left: 16, borderTopWidth: 2, borderLeftWidth: 2 } :
-                  i === 1 ? { top: 16, right: 16, borderTopWidth: 2, borderRightWidth: 2 } :
-                  i === 2 ? { bottom: 16, left: 16, borderBottomWidth: 2, borderLeftWidth: 2 } :
-                            { bottom: 16, right: 16, borderBottomWidth: 2, borderRightWidth: 2 }),
-            }} />
+              position:'absolute', width:28, height:28,
+              borderStyle:'solid', borderColor:'rgba(0,229,160,0.15)',
+              borderWidth:0, ...s,
+            }}/>
           ))}
+
+          {/* Skip */}
+          <AnimatePresence>
+            {showSkip && (
+              <motion.button
+                initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+                onClick={doExit}
+                style={{
+                  position:'absolute', bottom:28, right:28,
+                  background:'transparent',
+                  border:'1px solid rgba(0,229,160,0.18)',
+                  color:'rgba(90,100,120,0.8)',
+                  fontFamily:'JetBrains Mono,monospace',
+                  fontSize:'0.7rem', padding:'8px 18px',
+                  borderRadius:6, cursor:'pointer',
+                  letterSpacing:'0.1em', transition:'all 0.2s',
+                  zIndex:20,
+                }}
+                onMouseEnter={e=>{
+                  e.currentTarget.style.borderColor='#00e5a0'
+                  e.currentTarget.style.color='#00e5a0'
+                }}
+                onMouseLeave={e=>{
+                  e.currentTarget.style.borderColor='rgba(0,229,160,0.18)'
+                  e.currentTarget.style.color='rgba(90,100,120,0.8)'
+                }}
+              >
+                skip intro
+              </motion.button>
+            )}
+          </AnimatePresence>
         </motion.div>
       )}
     </AnimatePresence>

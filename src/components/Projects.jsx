@@ -3,7 +3,7 @@ import { useScrollFade } from '../hooks/useScrollFade'
 import { projects } from '../data/projects'
 import ProjectCard from './ProjectCard'
 
-const FILTERS = ['All', 'FPGA']
+const FILTERS = ['All', 'FPGA', 'RTL', 'Verification', 'ASIC']
 
 export default function Projects() {
   const [filter, setFilter] = useState('All')
@@ -14,50 +14,77 @@ export default function Projects() {
     : projects.filter(p => p.category === filter)
 
   return (
-    <section id="projects" style={{ background: 'rgba(15,15,26,0.4)', position: 'relative', zIndex: 2 }}>
+    <section id="projects" style={{ position: 'relative', zIndex: 2 }}>
+      <div className="section-divider" />
       <div className="section-wrapper">
         <div ref={titleRef} className="fade-up">
-          <p style={{ color: '#00ff88', fontFamily: 'JetBrains Mono', fontSize: '0.8rem', marginBottom: 8, letterSpacing: '0.15em' }}>
-            // 03. PROJECTS
-          </p>
+          <p className="section-eyebrow">03. Projects</p>
           <h2 className="section-title">What I've <span className="accent">Built</span></h2>
           <p className="section-subtitle">RTL designs, verification environments, and hardware systems.</p>
         </div>
 
-        {/* Filter tabs */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 36, flexWrap: 'wrap' }}>
-          {FILTERS.map(f => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              style={{
-                padding: '7px 18px',
-                border: `1px solid ${filter === f ? '#00ff88' : '#1e2030'}`,
-                background: filter === f ? 'rgba(0,255,136,0.08)' : 'transparent',
-                color: filter === f ? '#00ff88' : '#8892a4',
-                fontFamily: 'JetBrains Mono',
-                fontSize: '0.75rem',
-                borderRadius: 2,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                letterSpacing: '0.05em',
-              }}
-            >
-              {f}
-            </button>
-          ))}
+        {/* Filter pills */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 40, flexWrap: 'wrap' }}>
+          {FILTERS.map(f => {
+            const isActive = filter === f
+            return (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                style={{
+                  padding: '7px 18px',
+                  border: `1px solid ${isActive ? 'var(--accent)' : 'var(--border)'}`,
+                  background: isActive ? 'var(--accent-faint)' : 'transparent',
+                  color: isActive ? 'var(--accent)' : 'var(--text-muted)',
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: '0.83rem',
+                  fontWeight: isActive ? 600 : 400,
+                  borderRadius: 100,
+                  cursor: 'pointer',
+                  transition: 'all 0.22s ease',
+                  letterSpacing: '0.01em',
+                }}
+                onMouseEnter={e => {
+                  if (!isActive) {
+                    e.currentTarget.style.borderColor = 'var(--border-mid)'
+                    e.currentTarget.style.color = 'var(--text-body)'
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (!isActive) {
+                    e.currentTarget.style.borderColor = 'var(--border)'
+                    e.currentTarget.style.color = 'var(--text-muted)'
+                  }
+                }}
+              >
+                {f}
+              </button>
+            )
+          })}
         </div>
 
         {/* Projects grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-          gap: 20,
+          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+          gap: 22,
         }}>
           {filtered.map((project, i) => (
             <ProjectCard key={project.id} project={project} index={i} />
           ))}
         </div>
+
+        {filtered.length === 0 && (
+          <div style={{
+            textAlign: 'center',
+            padding: '60px 0',
+            color: 'var(--text-muted)',
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: '0.85rem',
+          }}>
+            // no projects in this category yet
+          </div>
+        )}
       </div>
     </section>
   )

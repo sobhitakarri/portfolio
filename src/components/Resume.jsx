@@ -1,44 +1,59 @@
 import { useScrollFade } from '../hooks/useScrollFade'
+import { FiDownload, FiFile } from 'react-icons/fi'
 
 export default function Resume() {
   const ref = useScrollFade()
 
   return (
     <section id="resume" style={{ position: 'relative', zIndex: 2 }}>
+      <div className="section-divider" />
       <div className="section-wrapper">
         <div ref={ref} className="fade-up">
-          <p style={{ color: '#00ff88', fontFamily: 'JetBrains Mono', fontSize: '0.8rem', marginBottom: 8, letterSpacing: '0.15em' }}>
-            // 04. RESUME
-          </p>
+          <p className="section-eyebrow">04. Resume</p>
           <h2 className="section-title">My <span className="accent">Resume</span></h2>
           <p className="section-subtitle">Full academic and project history.</p>
         </div>
 
-        <div className="ic-card fade-up" style={{ overflow: 'hidden' }}>
-          {/* Terminal header */}
+        {/* Resume viewer card */}
+        <div className="card" style={{ overflow: 'hidden' }}>
+          {/* Titlebar */}
           <div style={{
-            background: '#13131f',
-            padding: '12px 20px',
-            borderBottom: '1px solid #1e2030',
+            background: 'var(--bg-surface)',
+            padding: '14px 22px',
+            borderBottom: '1px solid var(--border)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff5f56' }} />
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ffbd2e' }} />
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#00ff88' }} />
-              <span style={{ fontFamily: 'JetBrains Mono', fontSize: '0.72rem', color: '#8892a4', marginLeft: 12 }}>
-                resume.pdf — Preview
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {/* Traffic lights */}
+              <div style={{ display: 'flex', gap: 7 }}>
+                {['#ff5f56','#ffbd2e','var(--accent)'].map((c, i) => (
+                  <div key={i} style={{
+                    width: 11, height: 11, borderRadius: '50%', background: c,
+                    boxShadow: i === 2 ? '0 0 6px rgba(0,229,160,0.5)' : 'none',
+                  }} />
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <FiFile size={13} style={{ color: 'var(--text-muted)' }} />
+                <span style={{
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontSize: '0.72rem',
+                  color: 'var(--text-muted)',
+                }}>
+                  Sobhita_Karri_Resume.pdf
+                </span>
+              </div>
             </div>
             <a
               href="/resume.pdf"
               download="Sobhita_Karri_Resume.pdf"
-              className="btn-circuit"
-              style={{ fontSize: '0.72rem', padding: '6px 16px' }}
+              className="btn-outline"
+              style={{ fontSize: '0.78rem', padding: '7px 16px', gap: 6 }}
             >
-              ↓ Download
+              <FiDownload size={13} />
+              Download
             </a>
           </div>
 
@@ -48,39 +63,41 @@ export default function Resume() {
             title="Sobhita Karri Resume"
             style={{
               width: '100%',
-              height: '80vh',
-              minHeight: 500,
+              height: '78vh',
+              minHeight: 520,
               border: 'none',
               display: 'block',
-              background: '#0a0a0f',
+              background: 'var(--bg-void)',
             }}
           />
         </div>
 
-        {/* Terminal command style download */}
+        {/* wget-style download link */}
         <div style={{
-          marginTop: 20,
-          background: '#0f0f1a',
-          border: '1px solid #1e2030',
-          borderRadius: 4,
+          marginTop: 18,
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 8,
           padding: '14px 20px',
-          fontFamily: 'JetBrains Mono',
+          fontFamily: 'JetBrains Mono, monospace',
           fontSize: '0.82rem',
           display: 'flex',
           alignItems: 'center',
           gap: 10,
-          color: '#8892a4',
+          color: 'var(--text-muted)',
         }}>
-          <span style={{ color: '#00ff88' }}>$</span>
-          <span>wget </span>
+          <span style={{ color: 'var(--accent)' }}>$</span>
+          <span>wget</span>
           <a
             href="/resume.pdf"
             download="Sobhita_Karri_Resume.pdf"
-            style={{ color: '#00ff88', textDecoration: 'none' }}
+            style={{ color: 'var(--accent)', textDecoration: 'none' }}
+            onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+            onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
           >
             Sobhita_Karri_Resume.pdf
           </a>
-          <span style={{ marginLeft: 'auto', color: '#8892a444', fontSize: '0.7rem' }}>188 KB</span>
+          <span style={{ marginLeft: 'auto', color: 'var(--text-faint)', fontSize: '0.7rem' }}>188 KB</span>
         </div>
       </div>
     </section>

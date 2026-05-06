@@ -1,6 +1,8 @@
-import { useRef, useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useTypewriter } from '../hooks/useTypewriter'
+import { FiArrowDown, FiGithub, FiLinkedin } from 'react-icons/fi'
+import * as THREE from 'three'
 
 const TAGLINES = [
   'RTL Designer.',
@@ -9,57 +11,253 @@ const TAGLINES = [
   'VLSI Enthusiast.',
 ]
 
-/* Floating logic gate symbols background */
-function LogicGateSVG({ symbol, x, y, delay }) {
+/* ═══════════════════════════════════════════════
+   THREE.JS — Neural-network node mesh background
+   Mouse repulsion + particle flow on edges
+   ═══════════════════════════════════════════════ */
+function NeuralBackground() {
+  const mountRef  = useRef(null)
+  const mouseRef  = useRef(new THREE.Vector2(9999, 9999))
+
+  useEffect(() => {
+    const mount = mountRef.current
+    if (!mount) return
+    const W = mount.clientWidth, H = mount.clientHeight
+
+    /* Renderer */
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    renderer.setSize(W, H)
+    renderer.setClearColor(0x000000, 0)
+    mount.appendChild(renderer.domElement)
+
+    const scene  = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 100)
+    camera.position.set(0, 0, 5)
+
+    /* ── NODES ── */
+    const NODE_COUNT = 80
+    const nodes  = []
+    const SPREAD = 4.5
+
+    for (let i = 0; i < NODE_COUNT; i++) {
+      nodes.push({
+        x:  (Math.random() - 0.5) * SPREAD * 2,
+        y:  (Math.random() - 0.5) * SPREAD,
+        z:  (Math.random() - 0.5) * 2,
+        vx: (Math.random() - 0.5) * 0.003,
+        vy: (Math.random() - 0.5) * 0.003,
+        phase: Math.random() * Math.PI * 2,
+      })
+    }
+
+    /* ── EDGES (connect nearby nodes) ── */
+    const CONNECT_DIST = 1.6
+    const MAX_EDGES    = 300
+
+    /* Line geometry — updated every frame */
+    const lineGeo = new THREE.BufferGeometry()
+    const linePts = new Float32Array(MAX_EDGES * 2 * 3)  // 2 verts per edge
+    const lineClr = new Float32Array(MAX_EDGES * 2 * 3)
+    lineGeo.setAttribute('position', new THREE.BufferAttribute(linePts, 3))
+    lineGeo.setAttribute('color',    new THREE.BufferAttribute(lineClr, 3))
+
+    const lineMat = new THREE.LineBasicMaterial({
+      vertexColors: true,
+      transparent:  true,
+      opacity:      0.35,
+      blending:     THREE.AdditiveBlending,
+      depthWrite:   false,
+    })
+    const lines = new THREE.LineSegments(lineGeo, lineMat)
+    scene.add(lines)
+
+    /* ── NODE DOTS (shader) ── */
+    const nodePos   = new Float32Array(NODE_COUNT * 3)
+    const nodePhase = new Float32Array(NODE_COUNT)
+    nodes.forEach((n, i) => {
+      nodePos[i*3]=n.x; nodePos[i*3+1]=n.y; nodePos[i*3+2]=n.z
+      nodePhase[i]=n.phase
+    })
+    const dotGeo = new THREE.BufferGeometry()
+    dotGeo.setAttribute('position', new THREE.BufferAttribute(nodePos, 3))
+    dotGeo.setAttribute('aPhase',   new THREE.BufferAttribute(nodePhase, 1))
+
+    const dotMat = new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0 } },
+      vertexShader: /* glsl */`
+        attribute float aPhase;
+        uniform float uTime;
+        varying float vPulse;
+        void main() {
+          vPulse = 0.5 + 0.5 * sin(uTime * 2.5 + aPhase);
+          gl_Position  = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = (3.0 + vPulse * 3.5) * (200.0 / -gl_Position.z);
+        }
+      `,
+      fragmentShader: /* glsl */`
+        varying float vPulse;
+        void main() {
+          vec2  uv = gl_PointCoord - 0.5;
+          float r  = length(uv);
+          if (r > 0.5) discard;
+          float g  = 1.0 - smoothstep(0.0, 0.5, r);
+          g = pow(g, 1.3);
+          // mix teal → blue based on pulse
+          vec3 col = mix(vec3(0.0, 0.898, 0.627), vec3(0.22, 0.74, 0.98), vPulse);
+          gl_FragColor = vec4(col * g, g * 0.85);
+        }
+      `,
+      transparent: true,
+      depthWrite:  false,
+      blending:    THREE.AdditiveBlending,
+    })
+    const dots = new THREE.Points(dotGeo, dotMat)
+    scene.add(dots)
+
+    /* ── FLOW PARTICLES (travel along edges) ── */
+    const FLOW_COUNT = 50
+    const flowGeo  = new THREE.BufferGeometry()
+    const flowPos  = new Float32Array(FLOW_COUNT * 3)
+    const flowData = Array.from({ length: FLOW_COUNT }, () => ({
+      edgeA: 0, edgeB: 1, t: Math.random(), speed: 0.002 + Math.random() * 0.004,
+    }))
+    flowGeo.setAttribute('position', new THREE.BufferAttribute(flowPos, 3))
+    const flowMat = new THREE.PointsMaterial({
+      color: 0x8b5cf6, size: 0.06,
+      transparent: true, opacity: 0.7,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    })
+    const flow = new THREE.Points(flowGeo, flowMat)
+    scene.add(flow)
+
+    /* ── mouse tracking ── */
+    const onMouseMove = (e) => {
+      const rect = mount.getBoundingClientRect()
+      const nx = ((e.clientX - rect.left) / W)  * 2 - 1
+      const ny = -((e.clientY - rect.top)  / H) * 2 + 1
+      // project to world at z=0
+      mouseRef.current.set(nx * SPREAD, ny * SPREAD * (H / W))
+    }
+    mount.addEventListener('mousemove', onMouseMove)
+
+    /* ── Animation loop ── */
+    const clock = new THREE.Clock()
+    let edgePairs = []
+    let animId
+
+    const animate = () => {
+      animId = requestAnimationFrame(animate)
+      const t = clock.getElapsedTime()
+      dotMat.uniforms.uTime.value = t
+
+      const mx = mouseRef.current.x, my = mouseRef.current.y
+      const REPEL = 1.2, REPEL_STR = 0.006
+
+      /* Move nodes */
+      nodes.forEach((n, i) => {
+        // Gentle float
+        n.x += n.vx + Math.sin(t * 0.4 + n.phase) * 0.0005
+        n.y += n.vy + Math.cos(t * 0.3 + n.phase) * 0.0004
+
+        // Bounce walls
+        if (n.x > SPREAD || n.x < -SPREAD) n.vx *= -1
+        if (n.y > SPREAD * 0.5 || n.y < -SPREAD * 0.5) n.vy *= -1
+
+        // Mouse repulsion
+        const dx = n.x - mx, dy = n.y - my
+        const d  = Math.sqrt(dx*dx + dy*dy)
+        if (d < REPEL && d > 0.01) {
+          const force = (REPEL - d) / REPEL * REPEL_STR
+          n.x += (dx / d) * force
+          n.y += (dy / d) * force
+        }
+
+        nodePos[i*3]=n.x; nodePos[i*3+1]=n.y; nodePos[i*3+2]=n.z
+      })
+      dotGeo.attributes.position.needsUpdate = true
+
+      /* Rebuild edges */
+      edgePairs = []
+      let ep = 0
+      for (let a = 0; a < NODE_COUNT && ep < MAX_EDGES; a++) {
+        for (let b = a+1; b < NODE_COUNT && ep < MAX_EDGES; b++) {
+          const dx = nodes[a].x-nodes[b].x
+          const dy = nodes[a].y-nodes[b].y
+          const d  = Math.sqrt(dx*dx+dy*dy)
+          if (d < CONNECT_DIST) {
+            const alpha = 1 - d/CONNECT_DIST
+            // teal → blue color
+            const r = 0.0, g = 0.898 * alpha, bl = 0.627 + alpha * 0.35
+            linePts[ep*6]  =nodes[a].x; linePts[ep*6+1]=nodes[a].y; linePts[ep*6+2]=nodes[a].z
+            linePts[ep*6+3]=nodes[b].x; linePts[ep*6+4]=nodes[b].y; linePts[ep*6+5]=nodes[b].z
+            lineClr[ep*6]  =r;   lineClr[ep*6+1]=g;   lineClr[ep*6+2]=bl
+            lineClr[ep*6+3]=r;   lineClr[ep*6+4]=g;   lineClr[ep*6+5]=bl
+            edgePairs.push([a, b])
+            ep++
+          }
+        }
+      }
+      // Zero out unused slots
+      for (let i = ep; i < MAX_EDGES; i++) {
+        linePts.fill(0, i*6, i*6+6)
+        lineClr.fill(0, i*6, i*6+6)
+      }
+      lineGeo.attributes.position.needsUpdate = true
+      lineGeo.attributes.color.needsUpdate    = true
+      lineGeo.setDrawRange(0, ep * 2)
+
+      /* Move flow particles along edges */
+      flowData.forEach((f, i) => {
+        f.t += f.speed
+        if (f.t > 1) {
+          f.t = 0
+          if (edgePairs.length > 0) {
+            const eIdx = Math.floor(Math.random() * edgePairs.length)
+            f.edgeA = edgePairs[eIdx][0]
+            f.edgeB = edgePairs[eIdx][1]
+          }
+          f.speed = 0.002 + Math.random() * 0.005
+        }
+        const na = nodes[f.edgeA], nb = nodes[f.edgeB]
+        if (na && nb) {
+          flowPos[i*3]   = na.x + (nb.x-na.x)*f.t
+          flowPos[i*3+1] = na.y + (nb.y-na.y)*f.t
+          flowPos[i*3+2] = na.z + (nb.z-na.z)*f.t
+        }
+      })
+      flowGeo.attributes.position.needsUpdate = true
+
+      renderer.render(scene, camera)
+    }
+    animate()
+
+    const onResize = () => {
+      const nW=mount.clientWidth, nH=mount.clientHeight
+      camera.aspect=nW/nH; camera.updateProjectionMatrix()
+      renderer.setSize(nW,nH)
+    }
+    window.addEventListener('resize', onResize)
+
+    return () => {
+      cancelAnimationFrame(animId)
+      mount.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('resize', onResize)
+      renderer.dispose()
+      if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement)
+    }
+  }, [])
+
   return (
-    <motion.div
-      style={{ position: 'absolute', left: `${x}%`, top: `${y}%`, opacity: 0.06 }}
-      animate={{ y: [0, -16, 0], opacity: [0.06, 0.1, 0.06] }}
-      transition={{ duration: 6 + delay, repeat: Infinity, ease: 'easeInOut', delay }}
-    >
-      <svg width="48" height="36" viewBox="0 0 48 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        {symbol === 'AND' && <>
-          <path d="M4 4 L24 4 Q44 4 44 18 Q44 32 24 32 L4 32 Z" stroke="#00ff88" strokeWidth="1.5" fill="none" />
-          <line x1="0" y1="10" x2="4" y2="10" stroke="#00ff88" strokeWidth="1.5" />
-          <line x1="0" y1="26" x2="4" y2="26" stroke="#00ff88" strokeWidth="1.5" />
-          <line x1="44" y1="18" x2="48" y2="18" stroke="#00ff88" strokeWidth="1.5" />
-        </>}
-        {symbol === 'OR' && <>
-          <path d="M4 4 Q14 4 20 4 Q44 4 44 18 Q44 32 20 32 Q14 32 4 32 Q14 18 4 4 Z" stroke="#00ff88" strokeWidth="1.5" fill="none" />
-          <line x1="0" y1="10" x2="8" y2="10" stroke="#00ff88" strokeWidth="1.5" />
-          <line x1="0" y1="26" x2="8" y2="26" stroke="#00ff88" strokeWidth="1.5" />
-          <line x1="44" y1="18" x2="48" y2="18" stroke="#00ff88" strokeWidth="1.5" />
-        </>}
-        {symbol === 'XOR' && <>
-          <path d="M8 4 Q18 4 24 4 Q44 4 44 18 Q44 32 24 32 Q18 32 8 32 Q18 18 8 4 Z" stroke="#00ff88" strokeWidth="1.5" fill="none" />
-          <path d="M4 4 Q10 18 4 32" stroke="#00ff88" strokeWidth="1.5" fill="none" />
-          <line x1="0" y1="10" x2="8" y2="10" stroke="#00ff88" strokeWidth="1.5" />
-          <line x1="0" y1="26" x2="8" y2="26" stroke="#00ff88" strokeWidth="1.5" />
-          <line x1="44" y1="18" x2="48" y2="18" stroke="#00ff88" strokeWidth="1.5" />
-        </>}
-        {symbol === 'NOT' && <>
-          <path d="M4 4 L4 32 L36 18 Z" stroke="#00ff88" strokeWidth="1.5" fill="none" />
-          <circle cx="39" cy="18" r="3" stroke="#00ff88" strokeWidth="1.5" fill="none" />
-          <line x1="0" y1="18" x2="4" y2="18" stroke="#00ff88" strokeWidth="1.5" />
-          <line x1="42" y1="18" x2="48" y2="18" stroke="#00ff88" strokeWidth="1.5" />
-        </>}
-      </svg>
-    </motion.div>
+    <div ref={mountRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'all' }} />
   )
 }
 
-const GATE_POSITIONS = [
-  { symbol: 'AND', x: 8,  y: 15, delay: 0 },
-  { symbol: 'OR',  x: 85, y: 20, delay: 1 },
-  { symbol: 'XOR', x: 70, y: 70, delay: 2 },
-  { symbol: 'NOT', x: 15, y: 75, delay: 1.5 },
-  { symbol: 'AND', x: 50, y: 10, delay: 3 },
-  { symbol: 'OR',  x: 30, y: 85, delay: 0.8 },
-  { symbol: 'XOR', x: 90, y: 55, delay: 2.5 },
-]
-
+/* ═══════════════════════════════════════════════
+   HERO SECTION
+   ═══════════════════════════════════════════════ */
 export default function Hero() {
-  const typed = useTypewriter(TAGLINES, 60, 35, 2000)
+  const typed = useTypewriter(TAGLINES, 65, 30, 2200)
 
   return (
     <section
@@ -70,233 +268,194 @@ export default function Hero() {
         alignItems: 'center',
         position: 'relative',
         overflow: 'hidden',
-        paddingTop: 80,
+        paddingTop: 68,
       }}
     >
-      {/* Floating logic gates */}
-      {GATE_POSITIONS.map((g, i) => (
-        <LogicGateSVG key={i} {...g} />
-      ))}
+      {/* THREE.JS NEURAL MESH — full behind everything */}
+      <NeuralBackground />
 
-      {/* PCB Traces Background Layer */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.1, y: [0, -20, 0] }}
-        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-        style={{
-          position: 'absolute',
-          inset: 0,
-          zIndex: 1,
-          backgroundImage: 'url("/hero-pcb-traces.svg")',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          pointerEvents: 'none',
-        }}
-      >
-        {/* Logic Pulses traveling through traces */}
-        {Array.from({ length: 5 }).map((_, i) => (
-          <motion.div
-            key={i}
-            initial={{ left: '-10%', top: `${20 + i * 15}%`, opacity: 0 }}
-            animate={{ 
-              left: '110%', 
-              opacity: [0, 1, 1, 0],
-            }}
-            transition={{ 
-              duration: 3, 
-              repeat: Infinity, 
-              delay: i * 2.5, 
-              ease: 'linear' 
-            }}
-            style={{
-              position: 'absolute',
-              width: 100,
-              height: 1,
-              background: 'linear-gradient(90deg, transparent, #00ff88, transparent)',
-              boxShadow: '0 0 10px #00ff88',
-              zIndex: 2,
-            }}
-          />
-        ))}
-      </motion.div>
-
-      {/* Radial glow */}
+      {/* Radial fade so center text is readable */}
       <div style={{
-        position: 'absolute',
-        top: '30%', left: '50%',
-        transform: 'translate(-50%, -50%)',
-        width: 600, height: 600,
-        background: 'radial-gradient(circle, rgba(0,255,136,0.05) 0%, transparent 70%)',
-        pointerEvents: 'none',
+        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
+        background: 'radial-gradient(ellipse 70% 70% at 30% 50%, transparent 0%, rgba(6,6,16,0.75) 80%)',
       }} />
 
-      <div className="section-wrapper" style={{ paddingTop: 40, paddingBottom: 40, zIndex: 5 }}>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.1 }}
-        >
-          {/* Pre-title badge */}
+      {/* Bottom fade */}
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0, height: 160,
+        background: 'linear-gradient(transparent, var(--bg-void))',
+        pointerEvents: 'none', zIndex: 2,
+      }} />
+
+      {/* CONTENT */}
+      <div className="section-wrapper" style={{ paddingTop: 48, paddingBottom: 48, zIndex: 5 }}>
+        <div style={{ maxWidth: 680 }}>
+
+          {/* Available badge */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            transition={{ delay: 0.15, duration: 0.6, ease: [0.22,1,0.36,1] }}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
-              border: '1px solid #00ff8844',
-              padding: '6px 14px',
-              borderRadius: 2,
-              marginBottom: 24,
-              fontFamily: 'JetBrains Mono, monospace',
-              fontSize: '0.75rem',
-              color: '#00ff88',
-              background: 'rgba(0,255,136,0.05)',
+              border: '1px solid rgba(0,229,160,0.25)',
+              padding: '6px 16px', borderRadius: 100, marginBottom: 28,
+              fontFamily: 'Inter, sans-serif', fontSize: '0.8rem',
+              color: 'var(--accent)',
+              background: 'rgba(0,229,160,0.06)',
+              backdropFilter: 'blur(8px)',
             }}
           >
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00ff88', boxShadow: '0 0 6px #00ff88', animation: 'blink 1s step-end infinite' }} />
+            <span style={{
+              width:7, height:7, borderRadius:'50%',
+              background:'var(--accent)', boxShadow:'0 0 8px var(--accent)',
+              animation:'pulse-dot 2s infinite', display:'inline-block',
+            }} />
             Available for opportunities
           </motion.div>
 
-          {/* Glitch Name */}
+          {/* Name */}
           <motion.h1
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.7 }}
+            transition={{ delay: 0.25, duration: 0.8, ease: [0.22,1,0.36,1] }}
             className="glitch-text"
             data-text="K S V S Sobhita"
             style={{
-              fontFamily: 'JetBrains Mono, monospace',
-              fontSize: 'clamp(3.5rem, 10vw, 7rem)',
-              fontWeight: 700,
-              color: '#c9d1d9',
-              lineHeight: 1,
-              marginBottom: 16,
-              letterSpacing: '-0.02em',
+              fontFamily: 'Outfit, sans-serif',
+              fontSize: 'clamp(3rem, 9vw, 6.5rem)',
+              fontWeight: 800,
+              color: 'var(--text-bright)',
+              lineHeight: 1.05, marginBottom: 20,
+              letterSpacing: '-0.04em',
             }}
           >
             K S V S Sobhita
           </motion.h1>
 
-          {/* Typewriter tagline */}
+          {/* Typewriter */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            transition={{ delay: 0.45 }}
             style={{
               fontFamily: 'JetBrains Mono, monospace',
-              fontSize: 'clamp(1rem, 3vw, 1.5rem)',
-              color: '#00ff88',
-              marginBottom: 32,
-              minHeight: '2em',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
+              fontSize: 'clamp(1rem, 2.5vw, 1.35rem)',
+              color: 'var(--accent)', marginBottom: 28,
+              minHeight: '1.8em', display: 'flex', alignItems: 'center', gap: 2,
             }}
           >
-            <span style={{ color: '#8892a4', marginRight: 8 }}>{'>'}</span>
+            <span style={{ color:'var(--text-muted)', marginRight:10, userSelect:'none' }}>{'>'}</span>
             {typed}
-            <span style={{ animation: 'blink 1s step-end infinite', color: '#00ff88', marginLeft: 2 }}>_</span>
+            <span style={{ animation:'blink 1s step-end infinite', color:'var(--accent)', marginLeft:2 }}>|</span>
           </motion.div>
 
-          {/* Bio line */}
+          {/* Bio */}
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55, duration: 0.7 }}
             style={{
-              color: '#8892a4',
-              fontSize: '1rem',
-              maxWidth: 520,
-              lineHeight: 1.8,
-              marginBottom: 40,
+              color: 'var(--text-body)', fontSize: '1.05rem',
+              maxWidth: 520, lineHeight: 1.8, marginBottom: 44,
             }}
           >
-            Electronics and Communication Engineering student specializing in VLSI design, RTL development, and functional verification.
-            Experienced with FPGA-based digital design and hardware debugging.
+            Electronics and Communication Engineering student specializing in{' '}
+            <span style={{ color:'var(--text-bright)', fontWeight:500 }}>VLSI design</span>,
+            RTL development, and functional verification — working at the boundary
+            of software logic and physical silicon.
           </motion.p>
 
-          {/* CTA Buttons */}
+          {/* CTAs */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
-            style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.65, duration: 0.6 }}
+            style={{ display:'flex', gap:14, flexWrap:'wrap', alignItems:'center' }}
           >
             <button
-              onClick={() => document.querySelector('#projects')?.scrollIntoView({ behavior: 'smooth' })}
-              className="btn-circuit filled"
+              onClick={() => document.querySelector('#projects')?.scrollIntoView({ behavior:'smooth' })}
+              className="btn-primary"
             >
               View Projects
             </button>
-            <a
-              href="/resume.pdf"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-circuit"
-            >
+            <a href="/resume.pdf" target="_blank" rel="noopener noreferrer" className="btn-outline">
               Download Resume
             </a>
+            <div style={{ display:'flex', gap:10, marginLeft:8 }}>
+              {[
+                { icon:FiGithub,   href:'https://github.com/sobhita-karri',      label:'GitHub' },
+                { icon:FiLinkedin, href:'https://linkedin.com/in/sobhita-karri', label:'LinkedIn' },
+              ].map(({ icon:Icon, href, label }) => (
+                <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label}
+                  style={{
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                    width:40, height:40, borderRadius:8,
+                    border:'1px solid var(--border)', color:'var(--text-muted)',
+                    background:'rgba(6,6,16,0.6)', backdropFilter:'blur(8px)',
+                    transition:'all 0.2s ease', textDecoration:'none',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.color='var(--accent)'
+                    e.currentTarget.style.borderColor='var(--border-light)'
+                    e.currentTarget.style.background='var(--accent-faint)'
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.color='var(--text-muted)'
+                    e.currentTarget.style.borderColor='var(--border)'
+                    e.currentTarget.style.background='rgba(6,6,16,0.6)'
+                  }}
+                >
+                  <Icon size={17} />
+                </a>
+              ))}
+            </div>
           </motion.div>
 
-          {/* Stats row */}
+          {/* Stats */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.9 }}
+            initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.85 }}
             style={{
-              display: 'flex',
-              gap: 40,
-              marginTop: 60,
-              paddingTop: 32,
-              borderTop: '1px solid #1e2030',
-              flexWrap: 'wrap',
+              display:'flex', gap:0, marginTop:64,
+              paddingTop:28, borderTop:'1px solid var(--border)', flexWrap:'wrap',
             }}
           >
             {[
-              { value: '4+',   label: 'Core Projects' },
-              { value: '10+',  label: 'RTL Modules' },
-              { value: '90%',  label: 'Design Efficiency' },
-              { value: 'FPGA', label: 'Prototyped' },
-            ].map((s, i) => (
-              <div key={i}>
-                <div style={{ fontFamily: 'JetBrains Mono', fontSize: '1.6rem', color: '#00ff88', fontWeight: 600 }}>
+              { value:'4+',   label:'Core Projects',    color:'var(--accent)' },
+              { value:'10+',  label:'RTL Modules',       color:'var(--blue)' },
+              { value:'90%',  label:'Design Efficiency', color:'var(--violet)' },
+              { value:'FPGA', label:'Prototyped',        color:'var(--accent)' },
+            ].map((s,i) => (
+              <div key={i} style={{
+                flex:'1 1 100px', padding:'20px 0',
+                paddingRight:32,
+                borderRight: i<3 ? '1px solid var(--border)' : 'none',
+                marginRight: i<3 ? 32 : 0,
+              }}>
+                <div style={{
+                  fontFamily:'Outfit,sans-serif', fontSize:'2rem',
+                  fontWeight:700, color:s.color, lineHeight:1, marginBottom:6,
+                }}>
                   {s.value}
                 </div>
-                <div style={{ color: '#8892a4', fontSize: '0.8rem', marginTop: 4 }}>
+                <div style={{ color:'var(--text-muted)', fontSize:'0.78rem' }}>
                   {s.label}
                 </div>
               </div>
             ))}
           </motion.div>
-        </motion.div>
+        </div>
       </div>
-
-      {/* Bottom fade */}
-      <div style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0, height: 120,
-        background: 'linear-gradient(transparent, #0a0a0f)',
-        pointerEvents: 'none',
-      }} />
 
       {/* Scroll indicator */}
       <motion.div
-        animate={{ y: [0, 8, 0] }}
-        transition={{ duration: 2, repeat: Infinity }}
+        animate={{ y:[0,10,0] }} transition={{ duration:2.2, repeat:Infinity, ease:'easeInOut' }}
+        onClick={() => document.querySelector('#about')?.scrollIntoView({ behavior:'smooth' })}
         style={{
-          position: 'absolute', bottom: 32, left: '50%',
-          transform: 'translateX(-50%)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          gap: 6,
-          color: '#8892a4',
-          fontSize: '0.7rem',
-          fontFamily: 'JetBrains Mono, monospace',
+          position:'absolute', bottom:36, left:'50%', transform:'translateX(-50%)',
+          display:'flex', flexDirection:'column', alignItems:'center',
+          gap:6, cursor:'pointer', zIndex:4,
         }}
       >
-        <span style={{ letterSpacing: '0.1em' }}>SCROLL</span>
-        <div style={{
-          width: 1, height: 40,
-          background: 'linear-gradient(#8892a4, transparent)',
-        }} />
+        <FiArrowDown size={16} style={{ color:'var(--text-muted)' }} />
+        <div style={{ width:1, height:32, background:'linear-gradient(var(--text-faint),transparent)' }} />
       </motion.div>
     </section>
   )

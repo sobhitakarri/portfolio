@@ -16,9 +16,27 @@ export default function Navbar() {
   const [activeSection, setActive] = useState('')
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40)
+    const onScroll = () => setScrolled(window.scrollY > 50)
     window.addEventListener('scroll', onScroll)
     return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // Active section tracker
+  useEffect(() => {
+    const ids = NAV_LINKS.map(l => l.href.replace('#',''))
+    const observer = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) setActive(entry.target.id)
+        })
+      },
+      { rootMargin: '-40% 0px -50% 0px' }
+    )
+    ids.forEach(id => {
+      const el = document.getElementById(id)
+      if (el) observer.observe(el)
+    })
+    return () => observer.disconnect()
   }, [])
 
   const scrollTo = (href) => {
@@ -32,28 +50,32 @@ export default function Navbar() {
       <motion.nav
         initial={{ y: -80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.6, delay: 0.2 }}
+        transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
         style={{
           position: 'fixed',
           top: 0, left: 0, right: 0,
           zIndex: 100,
-          transition: 'background 0.3s, border-color 0.3s',
-          background: scrolled ? 'rgba(10,10,15,0.92)' : 'transparent',
-          backdropFilter: scrolled ? 'blur(12px)' : 'none',
-          borderBottom: scrolled ? '1px solid #1e2030' : '1px solid transparent',
+          background: scrolled
+            ? 'rgba(6, 6, 16, 0.85)'
+            : 'transparent',
+          backdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
+          borderBottom: scrolled
+            ? '1px solid rgba(30, 32, 56, 0.8)'
+            : '1px solid transparent',
+          transition: 'background 0.4s ease, border-color 0.4s ease, backdrop-filter 0.4s ease',
         }}
       >
         <div style={{
-          maxWidth: 1200,
+          maxWidth: 'var(--max-w)',
           margin: '0 auto',
-          padding: '0 24px',
-          height: 64,
+          padding: '0 var(--section-px)',
+          height: 68,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
         }}>
 
-          {/* Logo — chip label style */}
+          {/* Logo */}
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
@@ -61,56 +83,75 @@ export default function Navbar() {
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 4,
-              fontFamily: 'JetBrains Mono, monospace',
-              fontSize: '0.95rem',
-              fontWeight: 600,
-              color: '#00ff88',
-              letterSpacing: '0.05em',
+              gap: 10,
+              fontFamily: 'Outfit, sans-serif',
+              fontWeight: 700,
+              fontSize: '1.1rem',
+              color: 'var(--text-bright)',
             }}>
-              {/* IC notch */}
-              <svg width="16" height="20" viewBox="0 0 16 20" style={{ flexShrink: 0 }}>
-                <rect x="1" y="1" width="14" height="18" rx="2" fill="none" stroke="#00ff88" strokeWidth="1.2" />
-                <path d="M5 1 A3 3 0 0 1 11 1" fill="none" stroke="#00ff88" strokeWidth="1.2" />
-                <line x1="0" y1="5"  x2="3"  y2="5"  stroke="#00ff88" strokeWidth="1" />
-                <line x1="0" y1="9"  x2="3"  y2="9"  stroke="#00ff88" strokeWidth="1" />
-                <line x1="0" y1="13" x2="3"  y2="13" stroke="#00ff88" strokeWidth="1" />
-                <line x1="13" y1="5"  x2="16" y2="5"  stroke="#00ff88" strokeWidth="1" />
-                <line x1="13" y1="9"  x2="16" y2="9"  stroke="#00ff88" strokeWidth="1" />
-                <line x1="13" y1="13" x2="16" y2="13" stroke="#00ff88" strokeWidth="1" />
-              </svg>
-              <span>SONNB</span>
-              <span style={{ color: '#8892a4', fontSize: '0.7rem', marginLeft: 2 }}>_v1.0</span>
+              <div style={{
+                width: 32, height: 32,
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, var(--accent), var(--blue))',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                color: '#060610',
+                fontFamily: 'JetBrains Mono, monospace',
+                boxShadow: '0 0 16px rgba(0, 229, 160, 0.3)',
+              }}>
+                SN
+              </div>
+              <span>Sobhita</span>
             </div>
           </button>
 
-          {/* Desktop nav */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} className="hidden md:flex">
-            {NAV_LINKS.map(link => (
-              <button
-                key={link.href}
-                onClick={() => scrollTo(link.href)}
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontSize: '0.8rem',
-                  color: '#8892a4',
-                  padding: '8px 12px',
-                  transition: 'color 0.2s',
-                  letterSpacing: '0.05em',
-                }}
-                onMouseEnter={e => e.target.style.color = '#00ff88'}
-                onMouseLeave={e => e.target.style.color = '#8892a4'}
-              >
-                {link.label}
-              </button>
-            ))}
+          {/* Desktop nav links */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} className="hidden md:flex">
+            {NAV_LINKS.map(link => {
+              const isActive = activeSection === link.href.replace('#','')
+              return (
+                <button
+                  key={link.href}
+                  onClick={() => scrollTo(link.href)}
+                  style={{
+                    background: isActive ? 'rgba(0, 229, 160, 0.08)' : 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '0.875rem',
+                    fontWeight: isActive ? 600 : 400,
+                    color: isActive ? 'var(--accent)' : 'var(--text-body)',
+                    padding: '7px 14px',
+                    borderRadius: 6,
+                    transition: 'all 0.2s ease',
+                    letterSpacing: '0.01em',
+                  }}
+                  onMouseEnter={e => {
+                    if (!isActive) {
+                      e.target.style.color = 'var(--text-bright)'
+                      e.target.style.background = 'rgba(255,255,255,0.04)'
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (!isActive) {
+                      e.target.style.color = 'var(--text-body)'
+                      e.target.style.background = 'none'
+                    }
+                  }}
+                >
+                  {link.label}
+                </button>
+              )
+            })}
             <a
               href="/resume.pdf"
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-circuit"
-              style={{ marginLeft: 8 }}
+              className="btn-primary"
+              style={{ marginLeft: 8, padding: '8px 20px', fontSize: '0.85rem', borderRadius: 6 }}
             >
               Resume
             </a>
@@ -119,71 +160,91 @@ export default function Navbar() {
           {/* Mobile hamburger */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
+            className="md:hidden"
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
-              color: '#00ff88', fontSize: '1.4rem', display: 'flex',
+              color: 'var(--text-bright)', fontSize: '1.3rem',
+              display: 'flex', padding: 6,
             }}
-            className="md:hidden"
           >
             {menuOpen ? <FiX /> : <FiMenu />}
           </button>
         </div>
       </motion.nav>
 
-      {/* Mobile menu */}
+      {/* Mobile menu overlay */}
       <AnimatePresence>
         {menuOpen && (
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            style={{
-              position: 'fixed', top: 0, right: 0, bottom: 0,
-              width: 260,
-              background: '#0f0f1a',
-              borderLeft: '1px solid #1e2030',
-              zIndex: 200,
-              padding: '80px 24px 24px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-            }}
-          >
-            {NAV_LINKS.map((link, i) => (
-              <motion.button
-                key={link.href}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.05 }}
-                onClick={() => scrollTo(link.href)}
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontSize: '0.95rem',
-                  color: '#c9d1d9',
-                  padding: '14px 0',
-                  textAlign: 'left',
-                  borderBottom: '1px solid #1e2030',
-                  transition: 'color 0.2s',
-                }}
-                onMouseEnter={e => e.target.style.color = '#00ff88'}
-                onMouseLeave={e => e.target.style.color = '#c9d1d9'}
-              >
-                <span style={{ color: '#00ff88', marginRight: 8 }}>{'>'}</span>
-                {link.label}
-              </motion.button>
-            ))}
-            <a
-              href="/resume.pdf"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-circuit"
-              style={{ marginTop: 24, textAlign: 'center', justifyContent: 'center' }}
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMenuOpen(false)}
+              style={{
+                position: 'fixed', inset: 0,
+                background: 'rgba(6,6,16,0.6)',
+                backdropFilter: 'blur(4px)',
+                zIndex: 198,
+              }}
+            />
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 220 }}
+              style={{
+                position: 'fixed', top: 0, right: 0, bottom: 0,
+                width: 280,
+                background: 'var(--bg-surface)',
+                borderLeft: '1px solid var(--border)',
+                zIndex: 199,
+                padding: '88px 28px 32px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+              }}
             >
-              Resume
-            </a>
-          </motion.div>
+              {NAV_LINKS.map((link, i) => (
+                <motion.button
+                  key={link.href}
+                  initial={{ opacity: 0, x: 16 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.06 }}
+                  onClick={() => scrollTo(link.href)}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '1rem', fontWeight: 500,
+                    color: 'var(--text-body)',
+                    padding: '14px 12px',
+                    textAlign: 'left',
+                    borderRadius: 8,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.color = 'var(--accent)'
+                    e.currentTarget.style.background = 'var(--accent-faint)'
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.color = 'var(--text-body)'
+                    e.currentTarget.style.background = 'none'
+                  }}
+                >
+                  {link.label}
+                </motion.button>
+              ))}
+              <a
+                href="/resume.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary"
+                style={{ marginTop: 20, justifyContent: 'center' }}
+              >
+                Download Resume
+              </a>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </>

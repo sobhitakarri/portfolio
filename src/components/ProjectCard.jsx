@@ -1,130 +1,144 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FiX, FiGithub, FiExternalLink } from 'react-icons/fi'
+import { FiX, FiGithub, FiExternalLink, FiCpu } from 'react-icons/fi'
 
-const CATEGORY_COLORS = {
-  RTL:          '#00ff88',
-  Verification: '#7c3aed',
-  FPGA:         '#3b82f6',
-  ASIC:         '#f59e0b',
+const CATEGORY_META = {
+  RTL:          { color: 'var(--accent)',  bg: 'rgba(0,229,160,0.1)',    border: 'rgba(0,229,160,0.25)' },
+  Verification: { color: 'var(--violet)', bg: 'rgba(139,92,246,0.1)',  border: 'rgba(139,92,246,0.25)' },
+  FPGA:         { color: 'var(--blue)',   bg: 'rgba(56,189,248,0.1)',   border: 'rgba(56,189,248,0.25)' },
+  ASIC:         { color: 'var(--amber)',  bg: 'rgba(245,158,11,0.1)',   border: 'rgba(245,158,11,0.25)' },
 }
 
-/* Waveform SVG — decorative */
-function WaveformSVG({ color }) {
-  const points = [0,1,1,0,0,1,0.5,0,0,1,1,0,0.3,1,0,0,1,1,0,0.7,0,1]
-  const h = 40
-  const w = 300
-  const step = w / (points.length - 1)
-  const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${i * step},${p === 0 ? 5 : h - 5}`).join(' ')
-
+/* Waveform decoration SVG */
+function WaveformBar({ color, index }) {
+  const heights = [30, 80, 50, 100, 20, 70, 40, 90, 60, 35, 75, 25, 85, 45, 100, 30, 65, 50]
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} preserveAspectRatio="none">
-      <path d={path} stroke={color} strokeWidth="1.5" fill="none" opacity="0.7" />
-      {points.map((p, i) => (
-        i > 0 && points[i] !== points[i-1] && (
-          <line
-            key={i}
-            x1={i * step} y1={5}
-            x2={i * step} y2={h - 5}
-            stroke={color} strokeWidth="1.5" opacity="0.7"
-          />
-        )
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 28 }}>
+      {heights.map((h, i) => (
+        <motion.div
+          key={i}
+          initial={{ scaleY: 0 }}
+          animate={{ scaleY: 1 }}
+          transition={{ delay: index * 0.08 + i * 0.02, duration: 0.3, ease: 'backOut' }}
+          style={{
+            width: 3,
+            height: `${h}%`,
+            background: color,
+            opacity: 0.3 + (h / 100) * 0.5,
+            borderRadius: 1,
+            transformOrigin: 'bottom',
+          }}
+        />
       ))}
-    </svg>
+    </div>
   )
 }
 
 export default function ProjectCard({ project, index }) {
   const [expanded, setExpanded] = useState(false)
-  const color = CATEGORY_COLORS[project.category] || '#00ff88'
+  const meta = CATEGORY_META[project.category] || CATEGORY_META.RTL
 
   return (
     <>
       <motion.div
-        className="ic-card"
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: index * 0.08 }}
-        whileHover={{ y: -4 }}
+        className="card"
+        initial={{ opacity: 0, y: 28 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ delay: index * 0.1, duration: 0.55, ease: [0.22,1,0.36,1] }}
+        whileHover={{ y: -5, transition: { duration: 0.22 } }}
         onClick={() => setExpanded(true)}
         style={{
-          padding: 0,
-          overflow: 'hidden',
           cursor: 'pointer',
           display: 'flex',
           flexDirection: 'column',
+          overflow: 'hidden',
         }}
       >
-        {/* Color bar top */}
-        <div style={{ height: 2, background: `linear-gradient(90deg, ${color}, transparent)` }} />
+        {/* Gradient top bar */}
+        <div style={{
+          height: 3,
+          background: `linear-gradient(90deg, ${meta.color}, transparent)`,
+        }} />
 
-        {/* Card body */}
-        <div style={{ padding: '20px 20px 16px', flex: 1 }}>
-          {/* Category + date */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ padding: '22px 22px 18px', flex: 1 }}>
+          {/* Category + date row */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <span style={{
-              fontFamily: 'JetBrains Mono',
-              fontSize: '0.65rem',
-              color: color,
-              border: `1px solid ${color}44`,
-              padding: '2px 8px',
-              borderRadius: 2,
-              background: `${color}11`,
-              letterSpacing: '0.1em',
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              fontFamily: 'JetBrains Mono, monospace',
+              fontSize: '0.68rem',
+              color: meta.color,
+              border: `1px solid ${meta.border}`,
+              padding: '3px 10px',
+              borderRadius: 100,
+              background: meta.bg,
+              letterSpacing: '0.08em',
+              fontWeight: 600,
             }}>
+              <FiCpu size={10} />
               {project.category}
             </span>
-            <span style={{ color: '#8892a4', fontSize: '0.72rem', fontFamily: 'JetBrains Mono' }}>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontFamily: 'JetBrains Mono' }}>
               {project.date}
             </span>
           </div>
 
           {/* Title */}
           <h3 style={{
-            fontFamily: 'JetBrains Mono',
-            fontSize: '1rem',
-            color: '#c9d1d9',
-            marginBottom: 8,
-            lineHeight: 1.4,
+            fontFamily: 'Outfit, sans-serif',
+            fontSize: '1.08rem',
+            fontWeight: 600,
+            color: 'var(--text-bright)',
+            marginBottom: 10,
+            lineHeight: 1.35,
           }}>
             {project.title}
           </h3>
 
           {/* Tagline */}
-          <p style={{ color: '#8892a4', fontSize: '0.82rem', lineHeight: 1.6, marginBottom: 16 }}>
+          <p style={{
+            color: 'var(--text-body)',
+            fontSize: '0.84rem',
+            lineHeight: 1.65,
+            marginBottom: 18,
+          }}>
             {project.tagline}
           </p>
 
-          {/* Waveform decoration */}
-          <div style={{ marginBottom: 16, opacity: 0.5 }}>
-            <WaveformSVG color={color} />
+          {/* Waveform */}
+          <div style={{ marginBottom: 18 }}>
+            <WaveformBar color={meta.color} index={index} />
           </div>
 
           {/* Tech tags */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {project.tags.map(tag => (
-              <span key={tag} className="tag-chip" style={{ fontSize: '0.65rem' }}>{tag}</span>
+              <span key={tag} className="tag-chip" style={{ fontSize: '0.67rem' }}>{tag}</span>
             ))}
           </div>
         </div>
 
-        {/* Click hint */}
+        {/* Footer */}
         <div style={{
-          padding: '10px 20px',
-          borderTop: '1px solid #1e2030',
+          padding: '12px 22px',
+          borderTop: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          color: '#8892a4',
-          fontSize: '0.72rem',
-          fontFamily: 'JetBrains Mono',
+          color: 'var(--text-muted)',
+          fontSize: '0.76rem',
+          fontFamily: 'Inter, sans-serif',
+          background: 'rgba(255,255,255,0.02)',
         }}>
-          <span>Click to expand</span>
+          <span style={{ color: 'var(--accent)', fontSize: '0.72rem', fontFamily: 'JetBrains Mono' }}>
+            View details →
+          </span>
           <FiExternalLink size={14} />
         </div>
       </motion.div>
 
-      {/* Expanded Modal */}
+      {/* Modal */}
       <AnimatePresence>
         {expanded && (
           <>
@@ -133,111 +147,160 @@ export default function ProjectCard({ project, index }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
               onClick={() => setExpanded(false)}
               style={{
                 position: 'fixed', inset: 0,
-                background: 'rgba(0,0,0,0.8)',
-                backdropFilter: 'blur(8px)',
+                background: 'rgba(0,0,0,0.75)',
+                backdropFilter: 'blur(12px)',
                 zIndex: 500,
               }}
             />
 
-            {/* Modal */}
+            {/* Modal panel */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 20 }}
+              initial={{ opacity: 0, scale: 0.94, y: 24 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.92, y: 20 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 280 }}
+              exit={{ opacity: 0, scale: 0.94, y: 24 }}
+              transition={{ type: 'spring', damping: 26, stiffness: 280 }}
               className="modal-scroll"
               style={{
                 position: 'fixed',
                 top: '50%', left: '50%',
                 transform: 'translate(-50%, -50%)',
                 width: '90vw',
-                maxWidth: 640,
-                maxHeight: '85vh',
+                maxWidth: 660,
+                maxHeight: '88vh',
                 overflowY: 'auto',
-                background: '#0f0f1a',
-                border: `1px solid ${color}44`,
-                borderRadius: 4,
+                background: 'var(--bg-elevated)',
+                border: `1px solid ${meta.border}`,
+                borderRadius: 14,
                 zIndex: 501,
-                boxShadow: `0 0 40px ${color}22`,
+                boxShadow: `0 0 60px ${meta.color}22, 0 24px 80px rgba(0,0,0,0.6)`,
               }}
             >
               {/* Modal top bar */}
-              <div style={{ height: 3, background: `linear-gradient(90deg, ${color}, ${color}44, transparent)` }} />
+              <div style={{
+                height: 3,
+                background: `linear-gradient(90deg, ${meta.color}, ${meta.color}44, transparent)`,
+                borderRadius: '14px 14px 0 0',
+              }} />
 
-              <div style={{ padding: '24px 28px' }}>
-                {/* Header row */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+              <div style={{ padding: '28px 32px' }}>
+                {/* Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
                   <div>
                     <span style={{
-                      fontFamily: 'JetBrains Mono', fontSize: '0.65rem',
-                      color: color, letterSpacing: '0.1em',
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      fontFamily: 'JetBrains Mono, monospace', fontSize: '0.68rem',
+                      color: meta.color, letterSpacing: '0.1em', fontWeight: 600,
+                      border: `1px solid ${meta.border}`,
+                      padding: '3px 10px', borderRadius: 100, background: meta.bg,
                     }}>
-                      {project.category} / {project.date}
+                      <FiCpu size={10} />
+                      {project.category}
                     </span>
-                    <h3 style={{ fontFamily: 'JetBrains Mono', fontSize: '1.25rem', color: '#c9d1d9', marginTop: 6 }}>
+                    <h3 style={{
+                      fontFamily: 'Outfit, sans-serif',
+                      fontSize: '1.4rem',
+                      fontWeight: 700,
+                      color: 'var(--text-bright)',
+                      marginTop: 10,
+                      lineHeight: 1.25,
+                    }}>
                       {project.title}
                     </h3>
+                    <p style={{
+                      color: 'var(--text-muted)',
+                      fontSize: '0.78rem',
+                      fontFamily: 'JetBrains Mono',
+                      marginTop: 4,
+                    }}>
+                      {project.date}
+                    </p>
                   </div>
                   <button
                     onClick={() => setExpanded(false)}
                     style={{
-                      background: 'none', border: '1px solid #1e2030',
-                      borderRadius: 2, padding: '6px',
-                      color: '#8892a4', cursor: 'pointer',
-                      display: 'flex',
+                      background: 'var(--bg-surface)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 8, padding: '8px',
+                      color: 'var(--text-muted)', cursor: 'pointer',
+                      display: 'flex', transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.color = 'var(--text-bright)'
+                      e.currentTarget.style.borderColor = 'var(--border-mid)'
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.color = 'var(--text-muted)'
+                      e.currentTarget.style.borderColor = 'var(--border)'
                     }}
                   >
                     <FiX size={16} />
                   </button>
                 </div>
 
-                {/* Waveform */}
+                {/* Signal waveform box */}
                 <div style={{
-                  background: '#13131f',
-                  border: '1px solid #1e2030',
-                  borderRadius: 4,
+                  background: 'var(--bg-surface)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 10,
                   padding: '16px 20px',
-                  marginBottom: 20,
+                  marginBottom: 22,
                 }}>
-                  <div style={{ fontFamily: 'JetBrains Mono', fontSize: '0.65rem', color: '#8892a4', marginBottom: 10, letterSpacing: '0.1em' }}>
-                    // SIGNAL WAVEFORM
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 12,
+                  }}>
+                    <span style={{
+                      fontFamily: 'JetBrains Mono', fontSize: '0.65rem',
+                      color: 'var(--text-muted)', letterSpacing: '0.12em',
+                    }}>
+                      // SIGNAL PROFILE
+                    </span>
+                    <div style={{ display: 'flex', gap: 14 }}>
+                      {['CLK', 'DATA', 'VALID', 'READY'].map(sig => (
+                        <span key={sig} style={{
+                          fontFamily: 'JetBrains Mono', fontSize: '0.6rem',
+                          color: 'var(--text-faint)',
+                        }}>
+                          {sig}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <WaveformSVG color={color} />
-                  <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
-                    {['CLK', 'DATA', 'VALID', 'READY'].map((sig, i) => (
-                      <span key={sig} style={{ fontFamily: 'JetBrains Mono', fontSize: '0.6rem', color: '#8892a4' }}>
-                        {sig}
-                      </span>
-                    ))}
-                  </div>
+                  <WaveformBar color={meta.color} index={index} />
                 </div>
 
                 {/* Design spec */}
-                <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontFamily: 'JetBrains Mono', fontSize: '0.65rem', color: '#8892a4', marginBottom: 10, letterSpacing: '0.1em' }}>
-                    // DESIGN SPEC
+                <div style={{ marginBottom: 24 }}>
+                  <div style={{
+                    fontFamily: 'JetBrains Mono', fontSize: '0.65rem',
+                    color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.12em',
+                  }}>
+                    // DESIGN SPECIFICATION
                   </div>
-                  <p style={{ color: '#8892a4', fontSize: '0.875rem', lineHeight: 1.8 }}>
+                  <p style={{ color: 'var(--text-body)', fontSize: '0.9rem', lineHeight: 1.85 }}>
                     {project.spec}
                   </p>
                 </div>
 
-                {/* Tech tags */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
+                {/* Tags */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 28 }}>
                   {project.tags.map(tag => (
                     <span key={tag} className="tag-chip">{tag}</span>
                   ))}
                 </div>
 
-                {/* GitHub link */}
+                {/* GitHub CTA */}
                 <a
                   href={project.github}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn-circuit"
+                  className="btn-primary"
                   style={{ gap: 8 }}
                 >
                   <FiGithub size={15} />
