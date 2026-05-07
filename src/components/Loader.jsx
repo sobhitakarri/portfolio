@@ -212,20 +212,46 @@ function DNAScene({ onPhaseEnd }) {
    + signal particles routing between them (Three.js / WebGL)
    ════════════════════════════════════════════════════════════ */
 const BLOCKS = [
-  { id:'CORE',   x:0,    z:0,    w:1.4, d:1.4, maxH:0.55, color:'#00e5a0', label:'PROC CORE',  delay:0    },
-  { id:'CACHE',  x:-1.3, z:0,    w:0.7, d:0.9, maxH:0.35, color:'#38bdf8', label:'L2 CACHE',   delay:300  },
-  { id:'BRAM',   x:1.3,  z:0,    w:0.7, d:0.9, maxH:0.35, color:'#8b5cf6', label:'BRAM',       delay:500  },
-  { id:'DSP',    x:0,    z:-1.3, w:0.9, d:0.6, maxH:0.28, color:'#f59e0b', label:'DSP',        delay:700  },
-  { id:'PLL',    x:-1.3, z:-1.1, w:0.5, d:0.5, maxH:0.22, color:'#e2e8f0', label:'PLL',        delay:900  },
-  { id:'GPIO',   x:1.3,  z:-1.1, w:0.5, d:0.5, maxH:0.18, color:'#38bdf8', label:'GPIO',       delay:1100 },
-  { id:'IO_N',   x:0,    z: 1.5, w:2.8, d:0.22,maxH:0.1,  color:'#00e5a0', label:'IO RING N',  delay:1300 },
-  { id:'IO_S',   x:0,    z:-1.9, w:2.8, d:0.22,maxH:0.1,  color:'#00e5a0', label:'IO RING S',  delay:1400 },
+  { id:'ARM',    x:0,    z:0,    w:1.0, d:1.0, maxH:0.22, color:'#2a2a2a', label:'ARM Cortex-M3', delay:0 },
+  { id:'SRAM',   x:1.0,  z:-0.5, w:1.2, d:0.3, maxH:0.18, color:'#2461b5', label:'8-64KB SRAM', delay:200 },
+  { id:'FLASH',  x:0.9,  z:-0.1, w:1.4, d:0.3, maxH:0.20, color:'#1a4a99', label:'256KB FLASH', delay:300 },
+  { id:'PWR',    x:-1.3, z:-0.5, w:0.6, d:0.4, maxH:0.18, color:'#2461b5', label:'Pwr Mgmt', delay:400 },
+  { id:'SWD',    x:-0.2, z:-1.6, w:0.6, d:0.3, maxH:0.18, color:'#2461b5', label:'SWD', delay:450 },
+  { id:'UDB1',   x:0.5,  z:-1.5, w:0.6, d:0.3, maxH:0.18, color:'#1e8a42', label:'UDB', delay:500 },
+  { id:'UDB2',   x:1.2,  z:-1.5, w:0.6, d:0.3, maxH:0.18, color:'#1e8a42', label:'UDB', delay:550 },
+  { id:'SPI',    x:1.3,  z:-1.1, w:0.6, d:0.3, maxH:0.18, color:'#1e8a42', label:'SPI', delay:600 },
+  { id:'I2C',    x:1.4,  z:-0.7, w:0.6, d:0.3, maxH:0.18, color:'#1e8a42', label:'I2C', delay:650 },
+  { id:'TCPWM1', x:-0.2, z: 0.6, w:0.7, d:0.3, maxH:0.18, color:'#1e8a42', label:'TCPWM', delay:700 },
+  { id:'TCPWM2', x:-0.1, z: 1.0, w:0.7, d:0.3, maxH:0.18, color:'#1e8a42', label:'TCPWM', delay:750 },
+  { id:'ADC1',   x:-0.9, z:-0.1, w:0.7, d:0.3, maxH:0.18, color:'#b55a14', label:'SAR ADC', delay:800 },
+  { id:'ADC2',   x:-1.1, z: 0.3, w:0.7, d:0.3, maxH:0.18, color:'#b55a14', label:'SAR ADC', delay:850 },
+  { id:'DAC1',   x:-1.0, z: 0.7, w:0.6, d:0.3, maxH:0.18, color:'#b55a14', label:'DAC', delay:900 },
+  { id:'DAC2',   x:-0.9, z: 1.1, w:0.6, d:0.3, maxH:0.18, color:'#b55a14', label:'DAC', delay:950 },
+  { id:'CMP1',   x:-1.0, z: 1.5, w:0.6, d:0.3, maxH:0.18, color:'#b55a14', label:'CMP', delay:1000 },
+  { id:'CAN',    x:-0.7, z:-0.9, w:0.6, d:0.3, maxH:0.18, color:'#9e1f1f', label:'CAN', delay:1100 },
+  { id:'LIN',    x:0.4,  z:-0.9, w:0.6, d:0.3, maxH:0.18, color:'#9e1f1f', label:'LIN', delay:1150 },
+  { id:'USB',    x:1.3,  z: 0.4, w:0.5, d:0.5, maxH:0.18, color:'#9e1f1f', label:'USB 2.0', delay:1200 },
+  { id:'CAP',    x:-1.3, z:-1.0, w:0.7, d:0.3, maxH:0.18, color:'#a07800', label:'CapSense', delay:1300 },
+  { id:'DMA',    x:0.8,  z: 0.6, w:0.6, d:0.3, maxH:0.18, color:'#a07800', label:'DMA', delay:1350 },
+  { id:'GPIO',   x:-1.2, z:-1.5, w:0.8, d:0.3, maxH:0.18, color:'#7030b0', label:'GPIO x72', delay:1400 },
 ]
 
-const ROUTES = [
-  ['CORE','CACHE'],['CORE','BRAM'],['CORE','DSP'],
-  ['CACHE','IO_N'],['BRAM','GPIO'],['PLL','CORE'],['DSP','IO_S'],
-]
+function createLabelTexture(text, bgColor) {
+  const canvas = document.createElement('canvas')
+  canvas.width = 512
+  canvas.height = 128
+  const ctx = canvas.getContext('2d')
+  ctx.fillStyle = bgColor
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.font = 'bold 48px "JetBrains Mono", monospace'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = '#ffffff'
+  ctx.fillText(text, 256, 64)
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.anisotropy = 4
+  return texture
+}
 
 function ChipFloorplan3D({ onDone }) {
   const canvasRef = useRef(null)
@@ -239,55 +265,130 @@ function ChipFloorplan3D({ onDone }) {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.setSize(W, H, false)
     renderer.shadowMap.enabled = true
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    renderer.outputColorSpace = THREE.SRGBColorSpace
+    renderer.toneMapping = THREE.ACESFilmicToneMapping
+    renderer.toneMappingExposure = 1.1
     renderer.setClearColor(0x000000, 0)
 
     const scene  = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(45, W/H, 0.1, 100)
-    camera.position.set(0, 5.5, 5)
+    camera.position.set(0, 4, 4.5)
     camera.lookAt(0, 0, 0)
 
-    /* ── Lighting ── */
-    scene.add(new THREE.AmbientLight(0x111122, 1.5))
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.6)
-    dirLight.position.set(3, 8, 4)
-    scene.add(dirLight)
+    /* ── 3-Point PBR Lighting ── */
+    const hemi = new THREE.HemisphereLight(0xfff8e7, 0x1a1a2e, 1.0)
+    scene.add(hemi)
 
-    /* ── Die substrate (flat PCB base) ── */
-    const subGeo = new THREE.BoxGeometry(3.6, 0.05, 4.4)
-    const subMat = new THREE.MeshStandardMaterial({ color:0x0a0a1a, roughness:0.8, metalness:0.3 })
-    const substrate = new THREE.Mesh(subGeo, subMat)
-    substrate.position.y = -0.025
-    scene.add(substrate)
+    // Key: warm overhead (fills chip from top-left)
+    const keyLight = new THREE.DirectionalLight(0xfff5d0, 3.5)
+    keyLight.position.set(4, 9, 3)
+    keyLight.castShadow = true
+    keyLight.shadow.mapSize.width = 2048
+    keyLight.shadow.mapSize.height = 2048
+    keyLight.shadow.bias = -0.0003
+    keyLight.shadow.camera.near = 0.1
+    keyLight.shadow.camera.far = 30
+    keyLight.shadow.camera.left = -6
+    keyLight.shadow.camera.right = 6
+    keyLight.shadow.camera.top = 6
+    keyLight.shadow.camera.bottom = -6
+    scene.add(keyLight)
 
-    /* ── Grid lines on substrate ── */
-    const gridHelper = new THREE.GridHelper(4, 20, 0x1e2038, 0x1e2038)
-    gridHelper.position.y = 0.01
-    scene.add(gridHelper)
+    // Rim: cold blue from behind to separate chip from bg
+    const rimLight = new THREE.DirectionalLight(0x8ab4e8, 1.8)
+    rimLight.position.set(-3, 2, -5)
+    scene.add(rimLight)
+
+    // Bounce: subtle warm orange from low-front (fakes PCB bounce)
+    const bounceLight = new THREE.PointLight(0xff8833, 0.6, 8)
+    bounceLight.position.set(0, -0.5, 2.5)
+    scene.add(bounceLight)
+
+    /* ── IC Body ── */
+    const bodyGeo = new THREE.BoxGeometry(4.2, 0.2, 4.2)
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.85, metalness: 0.15 })
+    const body = new THREE.Mesh(bodyGeo, bodyMat)
+    body.position.y = -0.1
+    body.receiveShadow = true
+    scene.add(body)
+
+    /* ── Gold Dots (Vias) ── */
+    const dotMat = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.2, metalness: 0.9 })
+    const dotGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.01, 8)
+    for(let x = -1.8; x <= 1.8; x += 0.4) {
+      for(let z = -1.8; z <= 1.8; z += 0.4) {
+        if (Math.abs(x) > 1.4 || Math.abs(z) > 1.4) {
+          const dot = new THREE.Mesh(dotGeo, dotMat)
+          dot.position.set(x, 0.005, z)
+          scene.add(dot)
+        }
+      }
+    }
+
+    /* ── Gull-Wing Pins (L-shaped, 2 boxes per pin) ── */
+    const pinMat = new THREE.MeshStandardMaterial({ color: 0xb8b8b8, roughness: 0.25, metalness: 0.95 })
+    const PITCH = 0.2, BODY_EDGE = 2.1, FOOT_REACH = 0.5
+    for (let i = -1.8; i <= 1.8; i += PITCH) {
+      // Each side: vertical leg + horizontal foot
+      const sides = [
+        { axis:'z', sign: 1 },  // front
+        { axis:'z', sign:-1 },  // back
+        { axis:'x', sign: 1 },  // right
+        { axis:'x', sign:-1 },  // left
+      ]
+      sides.forEach(({ axis, sign }) => {
+        // Vertical leg
+        const legGeo = new THREE.BoxGeometry(
+          axis==='z' ? 0.07 : 0.07,
+          0.22,
+          axis==='z' ? 0.07 : 0.07
+        )
+        const leg = new THREE.Mesh(legGeo, pinMat)
+        if (axis==='z') leg.position.set(i, -0.01, sign * BODY_EDGE)
+        else             leg.position.set(sign * BODY_EDGE, -0.01, i)
+        leg.receiveShadow = true
+        leg.castShadow   = true
+        scene.add(leg)
+
+        // Horizontal foot
+        const footGeo = new THREE.BoxGeometry(
+          axis==='z' ? 0.07 : FOOT_REACH,
+          0.04,
+          axis==='z' ? FOOT_REACH : 0.07
+        )
+        const foot = new THREE.Mesh(footGeo, pinMat)
+        const footOffset = BODY_EDGE + FOOT_REACH / 2
+        if (axis==='z') foot.position.set(i, -0.12, sign * footOffset)
+        else             foot.position.set(sign * footOffset, -0.12, i)
+        foot.receiveShadow = true
+        scene.add(foot)
+      })
+    }
 
     /* ── Build block meshes ── */
     const blockMeshes = {}
     const blockTargetH = {}
     BLOCKS.forEach(b => {
-      const col = new THREE.Color(b.color)
-      // Main filled block
-      const geo  = new THREE.BoxGeometry(b.w, 0.001, b.d)
-      const mat  = new THREE.MeshStandardMaterial({
-        color: col, roughness:0.3, metalness:0.6,
-        emissive: col, emissiveIntensity: 0.0,
-        transparent: true, opacity: 0.0,
+      const topTex = createLabelTexture(b.label, b.color)
+      // Side: matte molded plastic — rougher, slight sheen
+      const matSide = new THREE.MeshStandardMaterial({
+        color: b.color, roughness: 0.72, metalness: 0.0,
+        transparent: true, opacity: 0.0
       })
-      const mesh = new THREE.Mesh(geo, mat)
-      mesh.position.set(b.x, 0, b.z)
+      // Top: slight gloss to show the label texture cleanly
+      const matTop = new THREE.MeshStandardMaterial({
+        map: topTex, roughness: 0.45, metalness: 0.05,
+        transparent: true, opacity: 0.0
+      })
+      const materials = [matSide, matSide, matTop, matSide, matSide, matSide]
+      const geo = new THREE.BoxGeometry(b.w, 0.001, b.d)
+      const mesh = new THREE.Mesh(geo, materials)
+      mesh.position.set(b.x, 0.005, b.z)
+      mesh.castShadow = true
+      mesh.receiveShadow = true
       scene.add(mesh)
-
-      // Wireframe edges
-      const edges   = new THREE.EdgesGeometry(new THREE.BoxGeometry(b.w, 0.001, b.d))
-      const edgeMat = new THREE.LineBasicMaterial({ color: col, transparent:true, opacity:0 })
-      const wire    = new THREE.LineSegments(edges, edgeMat)
-      wire.position.set(b.x, 0, b.z)
-      scene.add(wire)
-
-      blockMeshes[b.id] = { mesh, wire, mat, edgeMat, col, b }
+      blockMeshes[b.id] = { mesh, materials, b }
       blockTargetH[b.id] = 0
     })
 
@@ -296,56 +397,11 @@ function ChipFloorplan3D({ onDone }) {
       setTimeout(() => { blockTargetH[b.id] = b.maxH }, b.delay)
     })
 
-    /* ── Routing trace lines ── */
-    const traceGroup = new THREE.Group()
-    scene.add(traceGroup)
-    const traceLines = []
-    ROUTES.forEach(([aId, bId]) => {
-      const ba = BLOCKS.find(x=>x.id===aId)
-      const bb = BLOCKS.find(x=>x.id===bId)
-      if (!ba || !bb) return
-      const pts = [
-        new THREE.Vector3(ba.x, 0.02, ba.z),
-        new THREE.Vector3((ba.x+bb.x)/2, 0.02, (ba.z+bb.z)/2 + 0.1),
-        new THREE.Vector3(bb.x, 0.02, bb.z),
-      ]
-      const curve = new THREE.CatmullRomCurve3(pts)
-      const tGeo  = new THREE.BufferGeometry().setFromPoints(curve.getPoints(32))
-      const tMat  = new THREE.LineBasicMaterial({
-        color: new THREE.Color(BLOCKS.find(x=>x.id===aId).color),
-        transparent: true, opacity: 0,
-        blending: THREE.AdditiveBlending,
-      })
-      const line = new THREE.Line(tGeo, tMat)
-      traceGroup.add(line)
-      traceLines.push({ line, tMat, curve, ba, bb })
-    })
-
-    /* ── Flow particles on routing traces ── */
-    const flowParticles = traceLines.map(tr => ({
-      ...tr,
-      t: Math.random(),
-      speed: 0.004 + Math.random() * 0.004,
-    }))
-    const flowGeo = new THREE.BufferGeometry()
-    const flowPos = new Float32Array(flowParticles.length * 3)
-    flowGeo.setAttribute('position', new THREE.BufferAttribute(flowPos, 3))
-    const flowMat = new THREE.PointsMaterial({
-      size: 0.08, color: 0x00e5a0,
-      transparent: true, opacity: 0,
-      blending: THREE.AdditiveBlending, depthWrite: false,
-    })
-    const flowPoints = new THREE.Points(flowGeo, flowMat)
-    scene.add(flowPoints)
-
     /* ── Progress counter ── */
     let progress = 0
     const totalDuration = 2800
     const startTime = performance.now()
     let raf, done = false
-
-    /* ── Labels (HTML overlay — positioned via project) ── */
-    // We'll skip HTML labels to keep it pure WebGL
 
     const tick = () => {
       raf = requestAnimationFrame(tick)
@@ -357,47 +413,29 @@ function ChipFloorplan3D({ onDone }) {
         const bm = blockMeshes[b.id]
         const tH = blockTargetH[b.id]
         if (tH === 0) return
+        
         const curH = bm.mesh.scale.y === 1 ? 0.001 : bm.mesh.geometry.parameters.height * bm.mesh.scale.y
-        // Lerp height via scale
-        const newH = Math.min((bm.mesh.geometry.parameters.height * bm.mesh.scale.y || 0.001) + tH * 0.04, tH)
+        const newH = Math.min(curH + tH * 0.04, tH)
         const sc   = newH / bm.mesh.geometry.parameters.height
         bm.mesh.scale.y = sc
-        bm.mesh.position.y = newH / 2
-        bm.wire.scale.y   = sc
-        bm.wire.position.y = newH / 2
-
+        bm.mesh.position.y = newH / 2 + 0.005
+        
         const ramp = Math.min(sc / (tH / bm.b.maxH), 1)
-        bm.mat.opacity = ramp * 0.75
-        bm.mat.emissiveIntensity = ramp * 0.4
-        bm.edgeMat.opacity = ramp * 0.9
+        bm.materials.forEach(m => { m.opacity = ramp })
       })
 
-      /* Fade in routing traces after first 4 blocks rise */
-      const traceFade = Math.max(0, Math.min((progress - 0.45) / 0.3, 1))
-      traceLines.forEach(tr => { tr.tMat.opacity = traceFade * 0.5 })
-      flowMat.opacity = traceFade * 0.85
-
-      /* Move flow particles */
-      flowParticles.forEach((fp, i) => {
-        fp.t += fp.speed
-        if (fp.t > 1) fp.t = 0
-        const pt = fp.curve.getPoint(fp.t)
-        flowPos[i*3]=pt.x; flowPos[i*3+1]=0.05; flowPos[i*3+2]=pt.z
-      })
-      flowGeo.attributes.position.needsUpdate = true
-
-      /* Slow camera orbit */
-      const angle = performance.now() * 0.0003
-      camera.position.x = Math.sin(angle) * 6.5
-      camera.position.z = Math.cos(angle) * 5.5
-      camera.position.y = 4.5 + Math.sin(angle * 0.5) * 0.5
-      camera.lookAt(0, 0.4, 0)
+      /* Gentle cinematic sway (close-up) */
+      const t = performance.now() * 0.0003
+      camera.position.x = Math.sin(t * 0.7) * 1.5
+      camera.position.z = 4.2 + Math.cos(t) * 0.8
+      camera.position.y = 3.5 + Math.sin(t * 0.5) * 0.4
+      camera.lookAt(0, 0, 0)
 
       renderer.render(scene, camera)
 
       if (progress >= 1 && !done) {
         done = true
-        setTimeout(onDone, 400)
+        setTimeout(onDone, 600)
       }
     }
     tick()

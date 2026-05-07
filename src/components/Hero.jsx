@@ -1,8 +1,8 @@
-import { useEffect, useRef } from 'react'
+﻿import { useRef } from 'react'
 import { motion } from 'framer-motion'
-import { useTypewriter } from '../hooks/useTypewriter'
 import { FiArrowDown, FiGithub, FiLinkedin } from 'react-icons/fi'
-import * as THREE from 'three'
+import TextType from './ui/TextType'
+import PixelBlast from './ui/PixelBlast'
 
 const TAGLINES = [
   'RTL Designer.',
@@ -12,252 +12,9 @@ const TAGLINES = [
 ]
 
 /* ═══════════════════════════════════════════════
-   THREE.JS — Neural-network node mesh background
-   Mouse repulsion + particle flow on edges
-   ═══════════════════════════════════════════════ */
-function NeuralBackground() {
-  const mountRef  = useRef(null)
-  const mouseRef  = useRef(new THREE.Vector2(9999, 9999))
-
-  useEffect(() => {
-    const mount = mountRef.current
-    if (!mount) return
-    const W = mount.clientWidth, H = mount.clientHeight
-
-    /* Renderer */
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-    renderer.setSize(W, H)
-    renderer.setClearColor(0x000000, 0)
-    mount.appendChild(renderer.domElement)
-
-    const scene  = new THREE.Scene()
-    const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 100)
-    camera.position.set(0, 0, 5)
-
-    /* ── NODES ── */
-    const NODE_COUNT = 80
-    const nodes  = []
-    const SPREAD = 4.5
-
-    for (let i = 0; i < NODE_COUNT; i++) {
-      nodes.push({
-        x:  (Math.random() - 0.5) * SPREAD * 2,
-        y:  (Math.random() - 0.5) * SPREAD,
-        z:  (Math.random() - 0.5) * 2,
-        vx: (Math.random() - 0.5) * 0.003,
-        vy: (Math.random() - 0.5) * 0.003,
-        phase: Math.random() * Math.PI * 2,
-      })
-    }
-
-    /* ── EDGES (connect nearby nodes) ── */
-    const CONNECT_DIST = 1.6
-    const MAX_EDGES    = 300
-
-    /* Line geometry — updated every frame */
-    const lineGeo = new THREE.BufferGeometry()
-    const linePts = new Float32Array(MAX_EDGES * 2 * 3)  // 2 verts per edge
-    const lineClr = new Float32Array(MAX_EDGES * 2 * 3)
-    lineGeo.setAttribute('position', new THREE.BufferAttribute(linePts, 3))
-    lineGeo.setAttribute('color',    new THREE.BufferAttribute(lineClr, 3))
-
-    const lineMat = new THREE.LineBasicMaterial({
-      vertexColors: true,
-      transparent:  true,
-      opacity:      0.35,
-      blending:     THREE.AdditiveBlending,
-      depthWrite:   false,
-    })
-    const lines = new THREE.LineSegments(lineGeo, lineMat)
-    scene.add(lines)
-
-    /* ── NODE DOTS (shader) ── */
-    const nodePos   = new Float32Array(NODE_COUNT * 3)
-    const nodePhase = new Float32Array(NODE_COUNT)
-    nodes.forEach((n, i) => {
-      nodePos[i*3]=n.x; nodePos[i*3+1]=n.y; nodePos[i*3+2]=n.z
-      nodePhase[i]=n.phase
-    })
-    const dotGeo = new THREE.BufferGeometry()
-    dotGeo.setAttribute('position', new THREE.BufferAttribute(nodePos, 3))
-    dotGeo.setAttribute('aPhase',   new THREE.BufferAttribute(nodePhase, 1))
-
-    const dotMat = new THREE.ShaderMaterial({
-      uniforms: { uTime: { value: 0 } },
-      vertexShader: /* glsl */`
-        attribute float aPhase;
-        uniform float uTime;
-        varying float vPulse;
-        void main() {
-          vPulse = 0.5 + 0.5 * sin(uTime * 2.5 + aPhase);
-          gl_Position  = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = (3.0 + vPulse * 3.5) * (200.0 / -gl_Position.z);
-        }
-      `,
-      fragmentShader: /* glsl */`
-        varying float vPulse;
-        void main() {
-          vec2  uv = gl_PointCoord - 0.5;
-          float r  = length(uv);
-          if (r > 0.5) discard;
-          float g  = 1.0 - smoothstep(0.0, 0.5, r);
-          g = pow(g, 1.3);
-          // mix teal → blue based on pulse
-          vec3 col = mix(vec3(0.0, 0.898, 0.627), vec3(0.22, 0.74, 0.98), vPulse);
-          gl_FragColor = vec4(col * g, g * 0.85);
-        }
-      `,
-      transparent: true,
-      depthWrite:  false,
-      blending:    THREE.AdditiveBlending,
-    })
-    const dots = new THREE.Points(dotGeo, dotMat)
-    scene.add(dots)
-
-    /* ── FLOW PARTICLES (travel along edges) ── */
-    const FLOW_COUNT = 50
-    const flowGeo  = new THREE.BufferGeometry()
-    const flowPos  = new Float32Array(FLOW_COUNT * 3)
-    const flowData = Array.from({ length: FLOW_COUNT }, () => ({
-      edgeA: 0, edgeB: 1, t: Math.random(), speed: 0.002 + Math.random() * 0.004,
-    }))
-    flowGeo.setAttribute('position', new THREE.BufferAttribute(flowPos, 3))
-    const flowMat = new THREE.PointsMaterial({
-      color: 0x8b5cf6, size: 0.06,
-      transparent: true, opacity: 0.7,
-      blending: THREE.AdditiveBlending, depthWrite: false,
-    })
-    const flow = new THREE.Points(flowGeo, flowMat)
-    scene.add(flow)
-
-    /* ── mouse tracking ── */
-    const onMouseMove = (e) => {
-      const rect = mount.getBoundingClientRect()
-      const nx = ((e.clientX - rect.left) / W)  * 2 - 1
-      const ny = -((e.clientY - rect.top)  / H) * 2 + 1
-      // project to world at z=0
-      mouseRef.current.set(nx * SPREAD, ny * SPREAD * (H / W))
-    }
-    mount.addEventListener('mousemove', onMouseMove)
-
-    /* ── Animation loop ── */
-    const clock = new THREE.Clock()
-    let edgePairs = []
-    let animId
-
-    const animate = () => {
-      animId = requestAnimationFrame(animate)
-      const t = clock.getElapsedTime()
-      dotMat.uniforms.uTime.value = t
-
-      const mx = mouseRef.current.x, my = mouseRef.current.y
-      const REPEL = 1.2, REPEL_STR = 0.006
-
-      /* Move nodes */
-      nodes.forEach((n, i) => {
-        // Gentle float
-        n.x += n.vx + Math.sin(t * 0.4 + n.phase) * 0.0005
-        n.y += n.vy + Math.cos(t * 0.3 + n.phase) * 0.0004
-
-        // Bounce walls
-        if (n.x > SPREAD || n.x < -SPREAD) n.vx *= -1
-        if (n.y > SPREAD * 0.5 || n.y < -SPREAD * 0.5) n.vy *= -1
-
-        // Mouse repulsion
-        const dx = n.x - mx, dy = n.y - my
-        const d  = Math.sqrt(dx*dx + dy*dy)
-        if (d < REPEL && d > 0.01) {
-          const force = (REPEL - d) / REPEL * REPEL_STR
-          n.x += (dx / d) * force
-          n.y += (dy / d) * force
-        }
-
-        nodePos[i*3]=n.x; nodePos[i*3+1]=n.y; nodePos[i*3+2]=n.z
-      })
-      dotGeo.attributes.position.needsUpdate = true
-
-      /* Rebuild edges */
-      edgePairs = []
-      let ep = 0
-      for (let a = 0; a < NODE_COUNT && ep < MAX_EDGES; a++) {
-        for (let b = a+1; b < NODE_COUNT && ep < MAX_EDGES; b++) {
-          const dx = nodes[a].x-nodes[b].x
-          const dy = nodes[a].y-nodes[b].y
-          const d  = Math.sqrt(dx*dx+dy*dy)
-          if (d < CONNECT_DIST) {
-            const alpha = 1 - d/CONNECT_DIST
-            // teal → blue color
-            const r = 0.0, g = 0.898 * alpha, bl = 0.627 + alpha * 0.35
-            linePts[ep*6]  =nodes[a].x; linePts[ep*6+1]=nodes[a].y; linePts[ep*6+2]=nodes[a].z
-            linePts[ep*6+3]=nodes[b].x; linePts[ep*6+4]=nodes[b].y; linePts[ep*6+5]=nodes[b].z
-            lineClr[ep*6]  =r;   lineClr[ep*6+1]=g;   lineClr[ep*6+2]=bl
-            lineClr[ep*6+3]=r;   lineClr[ep*6+4]=g;   lineClr[ep*6+5]=bl
-            edgePairs.push([a, b])
-            ep++
-          }
-        }
-      }
-      // Zero out unused slots
-      for (let i = ep; i < MAX_EDGES; i++) {
-        linePts.fill(0, i*6, i*6+6)
-        lineClr.fill(0, i*6, i*6+6)
-      }
-      lineGeo.attributes.position.needsUpdate = true
-      lineGeo.attributes.color.needsUpdate    = true
-      lineGeo.setDrawRange(0, ep * 2)
-
-      /* Move flow particles along edges */
-      flowData.forEach((f, i) => {
-        f.t += f.speed
-        if (f.t > 1) {
-          f.t = 0
-          if (edgePairs.length > 0) {
-            const eIdx = Math.floor(Math.random() * edgePairs.length)
-            f.edgeA = edgePairs[eIdx][0]
-            f.edgeB = edgePairs[eIdx][1]
-          }
-          f.speed = 0.002 + Math.random() * 0.005
-        }
-        const na = nodes[f.edgeA], nb = nodes[f.edgeB]
-        if (na && nb) {
-          flowPos[i*3]   = na.x + (nb.x-na.x)*f.t
-          flowPos[i*3+1] = na.y + (nb.y-na.y)*f.t
-          flowPos[i*3+2] = na.z + (nb.z-na.z)*f.t
-        }
-      })
-      flowGeo.attributes.position.needsUpdate = true
-
-      renderer.render(scene, camera)
-    }
-    animate()
-
-    const onResize = () => {
-      const nW=mount.clientWidth, nH=mount.clientHeight
-      camera.aspect=nW/nH; camera.updateProjectionMatrix()
-      renderer.setSize(nW,nH)
-    }
-    window.addEventListener('resize', onResize)
-
-    return () => {
-      cancelAnimationFrame(animId)
-      mount.removeEventListener('mousemove', onMouseMove)
-      window.removeEventListener('resize', onResize)
-      renderer.dispose()
-      if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement)
-    }
-  }, [])
-
-  return (
-    <div ref={mountRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'all' }} />
-  )
-}
-
-/* ═══════════════════════════════════════════════
    HERO SECTION
    ═══════════════════════════════════════════════ */
 export default function Hero() {
-  const typed = useTypewriter(TAGLINES, 65, 30, 2200)
 
   return (
     <section
@@ -271,13 +28,33 @@ export default function Hero() {
         paddingTop: 68,
       }}
     >
-      {/* THREE.JS NEURAL MESH — full behind everything */}
-      <NeuralBackground />
+      {/* PixelBlast — Bayer-dithered interactive background */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'all' }}>
+        <PixelBlast
+          variant="circle"
+          pixelSize={6}
+          color="#00e5a0"
+          patternScale={3}
+          patternDensity={1.1}
+          pixelSizeJitter={0.4}
+          enableRipples
+          rippleSpeed={0.4}
+          rippleThickness={0.12}
+          rippleIntensityScale={1.4}
+          liquid
+          liquidStrength={0.1}
+          liquidRadius={1.2}
+          liquidWobbleSpeed={5}
+          speed={0.5}
+          edgeFade={0.28}
+          transparent
+        />
+      </div>
 
-      {/* Radial fade so center text is readable */}
+      {/* Radial vignette so center text is readable */}
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
-        background: 'radial-gradient(ellipse 70% 70% at 30% 50%, transparent 0%, rgba(6,6,16,0.75) 80%)',
+        background: 'radial-gradient(ellipse 70% 70% at 30% 50%, transparent 0%, rgba(6,6,16,0.82) 80%)',
       }} />
 
       {/* Bottom fade */}
@@ -333,7 +110,7 @@ export default function Hero() {
             K S V S Sobhita
           </motion.h1>
 
-          {/* Typewriter */}
+          {/* Typewriter — React Bits TextType */}
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             transition={{ delay: 0.45 }}
@@ -345,8 +122,19 @@ export default function Hero() {
             }}
           >
             <span style={{ color:'var(--text-muted)', marginRight:10, userSelect:'none' }}>{'>'}</span>
-            {typed}
-            <span style={{ animation:'blink 1s step-end infinite', color:'var(--accent)', marginLeft:2 }}>|</span>
+            <TextType
+              text={TAGLINES}
+              typingSpeed={65}
+              deletingSpeed={30}
+              pauseDuration={2200}
+              showCursor={true}
+              cursorCharacter="|"
+              cursorClassName=""
+              loop={true}
+              variableSpeed={{ min: 50, max: 100 }}
+              as="span"
+              style={{ color: 'var(--accent)' }}
+            />
           </motion.div>
 
           {/* Bio */}
