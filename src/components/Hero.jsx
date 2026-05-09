@@ -1,4 +1,4 @@
-﻿import { useRef } from 'react'
+import { useRef } from 'react'
 import { motion } from 'framer-motion'
 import { FiArrowDown, FiGithub, FiLinkedin } from 'react-icons/fi'
 import TextType from './ui/TextType'
@@ -51,10 +51,16 @@ export default function Hero() {
         />
       </div>
 
-      {/* Radial vignette so center text is readable */}
+      {/* Left-side text backdrop — keeps text readable over green dots */}
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
-        background: 'radial-gradient(ellipse 70% 70% at 30% 50%, transparent 0%, rgba(6,6,16,0.82) 80%)',
+        background: 'linear-gradient(to right, rgba(6,6,16,0.93) 0%, rgba(6,6,16,0.88) 30%, rgba(6,6,16,0.60) 55%, rgba(6,6,16,0.15) 80%, transparent 100%)',
+      }} />
+
+      {/* Top edge darkener */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
+        background: 'linear-gradient(to bottom, rgba(6,6,16,0.55) 0%, transparent 28%)',
       }} />
 
       {/* Bottom fade */}
@@ -169,8 +175,8 @@ export default function Hero() {
             </a>
             <div style={{ display:'flex', gap:10, marginLeft:8 }}>
               {[
-                { icon:FiGithub,   href:'https://github.com/sobhita-karri',      label:'GitHub' },
-                { icon:FiLinkedin, href:'https://linkedin.com/in/sobhita-karri', label:'LinkedIn' },
+                { icon:FiGithub,   href:'https://github.com/sobhitakarri',                          label:'GitHub' },
+                { icon:FiLinkedin, href:'https://www.linkedin.com/in/sobhita-karri-a89506316/', label:'LinkedIn' },
               ].map(({ icon:Icon, href, label }) => (
                 <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label}
                   style={{

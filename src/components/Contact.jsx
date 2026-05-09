@@ -18,15 +18,15 @@ const CHANNELS = [
   {
     icon: FiGithub,
     label: 'GitHub',
-    value: 'github.com/sobhita-karri',
-    href: 'https://github.com/sobhita-karri',
+    value: 'github.com/sobhitakarri',
+    href: 'https://github.com/sobhitakarri',
     color: 'var(--text-bright)',
   },
   {
     icon: FiLinkedin,
     label: 'LinkedIn',
-    value: 'linkedin.com/in/sobhita-karri',
-    href: 'https://linkedin.com/in/sobhita-karri',
+    value: 'linkedin.com/in/sobhita-karri-a89506316',
+    href: 'https://www.linkedin.com/in/sobhita-karri-a89506316/',
     color: 'var(--blue)',
   },
   {

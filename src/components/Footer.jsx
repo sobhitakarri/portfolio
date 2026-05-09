@@ -17,8 +17,8 @@ const footerLinks = [
   {
     title: "Helpful Links",
     links: [
-      { label: "GitHub",   href: "https://github.com/sobhita-karri",     external: true },
-      { label: "LinkedIn", href: "https://linkedin.com/in/sobhita-karri", external: true },
+      { label: "GitHub",   href: "https://github.com/sobhitakarri",                          external: true },
+      { label: "LinkedIn", href: "https://www.linkedin.com/in/sobhita-karri-a89506316/", external: true },
       { label: "Contact",  href: "#contact", pulse: true },
     ],
   },
@@ -37,8 +37,8 @@ const contactInfo = [
 ];
 
 const socialLinks = [
-  { icon: <FiGithub   size={20} />, label: "GitHub",   href: "https://github.com/sobhita-karri" },
-  { icon: <FiLinkedin size={20} />, label: "LinkedIn", href: "https://linkedin.com/in/sobhita-karri" },
+  { icon: <FiGithub   size={20} />, label: "GitHub",   href: "https://github.com/sobhitakarri" },
+  { icon: <FiLinkedin size={20} />, label: "LinkedIn", href: "https://www.linkedin.com/in/sobhita-karri-a89506316/" },
   { icon: <FiMail     size={20} />, label: "Email",    href: "mailto:sobhita1011@gmail.com" },
 ];
 
