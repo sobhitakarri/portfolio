@@ -4,7 +4,8 @@ export const skillCategories = [
     label: 'Hardware Description Languages',
     skills: [
       { name: 'Verilog HDL', level: 90, badge: 'ADVANCED' },
-      { name: 'VHDL', level: 65, badge: 'INTERMEDIATE' },
+      { name: 'System Verilog', level: 65, badge: 'INTERMEDIATE' },
+      { name: 'C Programming', level: 60, badge: 'INTERMEDIATE' },
     ],
   },
 ]
