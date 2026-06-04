@@ -78,7 +78,7 @@ export default function Contact() {
       <div className="section-divider" />
       <div className="section-wrapper">
         <div ref={titleRef} className="fade-up">
-          <p className="section-eyebrow">06. Contact</p>
+          <p className="section-eyebrow">05. Contact</p>
           <h2 className="section-title">Get in <span className="accent">Touch</span></h2>
           <p className="section-subtitle">Open for internships, collaborations, and hardware chats.</p>
         </div>
