@@ -7,7 +7,7 @@ import About        from './components/About'
 import SkillsMatrix from './components/SkillsMatrix'
 import Projects     from './components/Projects'
 import Resume       from './components/Resume'
-import Blog         from './components/Blog'
+
 import Contact      from './components/Contact'
 import Footer       from './components/Footer'
 import NotFound     from './components/NotFound'
@@ -37,7 +37,7 @@ function MainSite() {
             <SkillsMatrix />
             <Projects />
             <Resume />
-            <Blog />
+            
             <Contact />
           </main>
           <Footer />
