@@ -1,157 +1,120 @@
 import { motion } from 'framer-motion'
 import { useScrollFade } from '../hooks/useScrollFade'
 
-const STATS = [
-  { label: 'GPA',    value: '7.55 / 10.0',   icon: '◈', color: 'var(--accent)' },
-  { label: 'Year',   value: '2023 – Present', icon: '◉', color: 'var(--blue)' },
-  { label: 'Focus',  value: 'VLSI & RTL',    icon: '◎', color: 'var(--violet)' },
-  { label: 'FPGA',   value: 'Basys-3',        icon: '◌', color: 'var(--accent)' },
+const TOOLS = [
+  'ROS 2', 'Python', 'C/C++', 'MATLAB', 'Simulink',
+  'OpenCV', 'PyTorch', 'Gazebo', 'Verilog', 'SystemVerilog',
 ]
 
-const TOOLS = [
-  'Vivado', 'Quartus', 'Keil uVision',
-  'Proteus', 'LTspice', 'Arduino IDE', 'MATLAB',
+const FOCUS = [
+  { label: 'Core Focus', value: 'Robotics & Autonomy' },
+  { label: 'Research', value: 'LLM/VLM + Drones' },
+  { label: 'Hardware', value: 'FPGA · Embedded · RTL' },
+  { label: 'Tools', value: 'ROS 2 · Gazebo · MATLAB' },
 ]
 
 export default function About() {
   const titleRef = useScrollFade()
-  const bioRef   = useScrollFade(0.12)
-  const statsRef = useScrollFade(0.2)
+  const bodyRef  = useScrollFade(0.12)
 
   return (
     <section id="about" style={{ position: 'relative', zIndex: 2 }}>
       <div className="section-divider" />
       <div className="section-wrapper">
 
-        {/* Header */}
         <div ref={titleRef} className="fade-up">
-          <p className="section-eyebrow">01. About</p>
-          <h2 className="section-title">Who I <span className="accent">Am</span></h2>
-          <p className="section-subtitle">Engineer at the boundary of software logic and physical silicon.</p>
+          <p className="section-label">02 About</p>
+          <h2 className="section-heading">
+            Building the physical side of intelligence.
+          </h2>
         </div>
 
-        {/* Two-column layout */}
-        <div style={{
+        <div ref={bodyRef} className="fade-up fade-up-delay-1" style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-          gap: 48,
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: 'clamp(36px, 6vw, 64px)',
           alignItems: 'start',
         }}>
 
-          {/* Bio column */}
-          <div ref={bioRef} className="fade-up">
-            <div style={{
-              lineHeight: 1.9,
-              color: 'var(--text-body)',
-              fontSize: '0.97rem',
-            }}>
-              <p style={{ marginBottom: 20 }}>
-                I'm{' '}
-                <span style={{ color: 'var(--text-bright)', fontWeight: 600 }}>K S V S Sobhita</span>, an
-                Electronics and Communication Engineering undergraduate specializing in VLSI design,
-                RTL development, and functional verification. My work focuses on FPGA-based digital
-                design using SystemVerilog, protocol-level hardware debugging, and discrete circuit implementation.
-              </p>
-              <p style={{ marginBottom: 20 }}>
-                I have hands-on experience with industry-standard EDA flows and I am passionate about
-                contributing to silicon development and verification pipelines. From designing modular
-                logic analyzers to building laser-based communication systems, I enjoy solving complex
-                hardware challenges.
-              </p>
-              <p>
-                Currently looking for a front-end VLSI or RTL design role where I can apply my skills
-                in RTL design, functional verification, and FPGA prototyping.
-              </p>
-            </div>
+          <div className="type-body" style={{ color: 'var(--text-body)' }}>
+            <p style={{ marginBottom: 18, fontSize: 'var(--fs-lead)', lineHeight: 1.6 }}>
+              I&apos;m <span style={{ color: 'var(--text-bright)', fontWeight: 600 }}>Sobhita Karri</span>,
+              an Electronics & Communication Engineering undergraduate working at the intersection of
+              {' '}<span style={{ color: 'var(--text-bright)' }}>robotics, autonomous systems, and embedded intelligence</span>,
+              with a foundation in digital hardware and VLSI.
+            </p>
+            <p style={{ marginBottom: 18, color: 'var(--text-muted)' }}>
+              Current work focuses on autonomous robotic systems that bring together perception,
+              reasoning, planning, and real-time control — including an{' '}
+              <span style={{ color: 'var(--text-bright)' }}>autonomous drone framework</span>{' '}
+              with LLM/VLM reasoning, vision-based spatial grounding, dynamic replanning,
+              and MATLAB/Simulink hardware-in-the-loop simulation.
+            </p>
+            <p style={{ color: 'var(--text-muted)' }}>
+              Hands-on experience also includes IMU-based stabilization and motion control
+              through a self-balancing two-wheeler project.
+            </p>
 
-            {/* Tool badges */}
-            <div style={{ marginTop: 32, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ marginTop: 28, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {TOOLS.map(t => (
                 <span key={t} className="tag-chip">{t}</span>
               ))}
             </div>
           </div>
 
-          {/* Stats column */}
-          <div ref={statsRef} className="fade-up" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {STATS.map((s, i) => (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {FOCUS.map((s, i) => (
               <motion.div
                 key={s.label}
-                initial={{ opacity: 0, x: 20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                className="card"
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-40px' }}
+                transition={{ delay: i * 0.07, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
                 style={{
-                  padding: '18px 22px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 16,
+                  padding: '20px 0',
+                  borderBottom: '1px solid var(--border)',
                 }}
               >
-                <div style={{
-                  width: 44, height: 44,
-                  borderRadius: 10,
-                  background: `${s.color}18`,
-                  border: `1px solid ${s.color}33`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '1.1rem',
-                  color: s.color,
-                  flexShrink: 0,
-                }}>
-                  {s.icon}
+                <div className="type-xs" style={{ marginBottom: 6 }}>
+                  {s.label}
                 </div>
-                <div>
-                  <div style={{
-                    fontFamily: 'Outfit, sans-serif',
-                    fontSize: '1.05rem',
-                    fontWeight: 600,
-                    color: 'var(--text-bright)',
-                    lineHeight: 1.2,
-                  }}>
-                    {s.value}
-                  </div>
-                  <div style={{
-                    color: 'var(--text-muted)',
-                    fontSize: '0.78rem',
-                    marginTop: 3,
-                    fontFamily: 'Inter, sans-serif',
-                  }}>
-                    {s.label}
-                  </div>
+                <div className="type-h2">
+                  {s.value}
                 </div>
               </motion.div>
             ))}
 
-            {/* Open to work banner */}
-            <div style={{
-              padding: '16px 20px',
-              borderRadius: 10,
-              border: '1px solid rgba(0, 229, 160, 0.2)',
-              background: 'linear-gradient(135deg, rgba(0,229,160,0.06), rgba(56,189,248,0.04))',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-            }}>
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              style={{
+                marginTop: 28,
+                paddingTop: 20,
+                borderTop: '1px solid var(--border)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+              }}
+            >
               <span style={{
-                width: 10, height: 10,
-                borderRadius: '50%',
+                width: 6, height: 6,
                 background: 'var(--accent)',
-                boxShadow: '0 0 10px var(--accent)',
-                animation: 'pulse-dot 2s infinite',
                 display: 'inline-block',
+                animation: 'pulse-dot 2.5s infinite',
                 flexShrink: 0,
               }} />
               <div>
-                <div style={{ color: 'var(--accent)', fontSize: '0.82rem', fontWeight: 600 }}>
-                  Open to Opportunities
+                <div className="type-sm" style={{ color: 'var(--text-bright)', fontWeight: 600 }}>
+                  Open to opportunities
                 </div>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 2 }}>
-                  RTL Design · ASIC Verification · FPGA
+                <div className="type-xs" style={{ marginTop: 4, letterSpacing: '0.08em' }}>
+                  Robotics · Autonomous Systems · Embedded
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
+
         </div>
       </div>
     </section>

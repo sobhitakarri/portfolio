@@ -3,7 +3,7 @@ import { useScrollFade } from '../hooks/useScrollFade'
 import { projects } from '../data/projects'
 import ProjectCard from './ProjectCard'
 
-const FILTERS = ['All', 'FPGA', 'RTL', 'Verification', 'ASIC']
+const FILTERS = ['All', 'Autonomy', 'Embedded', 'Hardware']
 
 export default function Projects() {
   const [filter, setFilter] = useState('All')
@@ -18,13 +18,12 @@ export default function Projects() {
       <div className="section-divider" />
       <div className="section-wrapper">
         <div ref={titleRef} className="fade-up">
-          <p className="section-eyebrow">03. Projects</p>
-          <h2 className="section-title">What I've <span className="accent">Built</span></h2>
-          <p className="section-subtitle">RTL designs, verification environments, and hardware systems.</p>
+          <p className="section-label">04 Projects</p>
+          <h2 className="section-heading">What I&apos;ve built</h2>
+          <p className="section-desc">From autonomous flight systems to hardware accelerators.</p>
         </div>
 
-        {/* Filter pills */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 40, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 0, marginBottom: 40, flexWrap: 'wrap', borderBottom: '1px solid var(--border)' }}>
           {FILTERS.map(f => {
             const isActive = filter === f
             return (
@@ -32,29 +31,25 @@ export default function Projects() {
                 key={f}
                 onClick={() => setFilter(f)}
                 style={{
-                  padding: '7px 18px',
-                  border: `1px solid ${isActive ? 'var(--accent)' : 'var(--border)'}`,
-                  background: isActive ? 'var(--accent-faint)' : 'transparent',
-                  color: isActive ? 'var(--accent)' : 'var(--text-muted)',
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: '0.83rem',
-                  fontWeight: isActive ? 600 : 400,
-                  borderRadius: 100,
+                  padding: '12px 18px',
+                  border: 'none',
+                  borderBottom: isActive ? '2px solid var(--text-bright)' : '2px solid transparent',
+                  marginBottom: -1,
+                  background: 'transparent',
+                  color: isActive ? 'var(--text-bright)' : 'var(--text-faint)',
+                  fontFamily: 'Inter Tight, sans-serif',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
                   cursor: 'pointer',
-                  transition: 'all 0.22s ease',
-                  letterSpacing: '0.01em',
+                  transition: 'color 0.2s ease',
                 }}
                 onMouseEnter={e => {
-                  if (!isActive) {
-                    e.currentTarget.style.borderColor = 'var(--border-mid)'
-                    e.currentTarget.style.color = 'var(--text-body)'
-                  }
+                  if (!isActive) e.currentTarget.style.color = 'var(--text-muted)'
                 }}
                 onMouseLeave={e => {
-                  if (!isActive) {
-                    e.currentTarget.style.borderColor = 'var(--border)'
-                    e.currentTarget.style.color = 'var(--text-muted)'
-                  }
+                  if (!isActive) e.currentTarget.style.color = 'var(--text-faint)'
                 }}
               >
                 {f}
@@ -63,11 +58,10 @@ export default function Projects() {
           })}
         </div>
 
-        {/* Projects grid */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-          gap: 22,
+          gap: 0,
         }}>
           {filtered.map((project, i) => (
             <ProjectCard key={project.id} project={project} index={i} />
@@ -76,13 +70,12 @@ export default function Projects() {
 
         {filtered.length === 0 && (
           <div style={{
-            textAlign: 'center',
             padding: '60px 0',
             color: 'var(--text-muted)',
-            fontFamily: 'JetBrains Mono, monospace',
-            fontSize: '0.85rem',
+            fontFamily: 'IBM Plex Mono, monospace',
+            fontSize: '0.78rem',
           }}>
-            // no projects in this category yet
+            No projects in this category yet.
           </div>
         )}
       </div>

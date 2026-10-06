@@ -1,57 +1,49 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import Loader       from './components/Loader'
 import Navbar       from './components/Navbar'
 import Hero         from './components/Hero'
 import About        from './components/About'
-import SkillsMatrix from './components/SkillsMatrix'
+import Domains      from './components/Domains'
 import Projects     from './components/Projects'
 import Resume       from './components/Resume'
-
 import Contact      from './components/Contact'
 import Footer       from './components/Footer'
 import NotFound     from './components/NotFound'
+import Loader       from './components/Loader'
+import FlightPath   from './components/FlightPath'
 
-const SKIP_KEY = 'sonnb_loader_seen'
-
-function MainSite() {
-  const [showLoader, setShowLoader] = useState(
-    () => !sessionStorage.getItem(SKIP_KEY)
-  )
-
-  const handleLoaderComplete = () => {
-    sessionStorage.setItem(SKIP_KEY, '1')
-    setShowLoader(false)
-  }
-
+function MainSite({ ready }) {
   return (
     <>
-      {showLoader && <Loader onComplete={handleLoaderComplete} />}
-
-      {!showLoader && (
-        <>
-          <Navbar />
-          <main>
-            <Hero />
-            <About />
-            <SkillsMatrix />
-            <Projects />
-            <Resume />
-            
-            <Contact />
-          </main>
-          <Footer />
-        </>
-      )}
+      <Navbar />
+      <div style={{ position: 'relative' }}>
+        <FlightPath />
+        <main style={{
+          opacity: ready ? 1 : 0,
+          transition: 'opacity 0.5s ease',
+        }}>
+          <Hero />
+          <About />
+          <Domains />
+          <Projects />
+          <Resume />
+          <Contact />
+        </main>
+        <Footer />
+      </div>
     </>
   )
 }
 
 export default function App() {
+  const [ready, setReady] = useState(false)
+  const onLoaderDone = useCallback(() => setReady(true), [])
+
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
+      {!ready && <Loader onDone={onLoaderDone} />}
       <Routes>
-        <Route path="/" element={<MainSite />} />
+        <Route path="/" element={<MainSite ready={ready} />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>

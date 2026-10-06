@@ -1,43 +1,30 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FiMenu, FiX } from 'react-icons/fi'
+import { FiMoon, FiSun } from 'react-icons/fi'
+import { useTheme } from '../hooks/useTheme'
 
 const NAV_LINKS = [
-  { label: 'About',    href: '#about' },
-  { label: 'Skills',   href: '#skills' },
-  { label: 'Projects', href: '#projects' },
-  
-  { label: 'Contact',  href: '#contact' },
+  { label: '01 About',    href: '#about' },
+  { label: '02 Domains',  href: '#domains' },
+  { label: '03 Projects', href: '#projects' },
+  { label: '04 Contact',  href: '#contact' },
 ]
 
 export default function Navbar() {
-  const [scrolled,  setScrolled]  = useState(false)
-  const [menuOpen,  setMenuOpen]  = useState(false)
-  const [activeSection, setActive] = useState('')
+  const [scrolled, setScrolled] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const { theme, toggle, isDark } = useTheme()
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 50)
+    const onScroll = () => setScrolled(window.scrollY > 20)
     window.addEventListener('scroll', onScroll)
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Active section tracker
   useEffect(() => {
-    const ids = NAV_LINKS.map(l => l.href.replace('#',''))
-    const observer = new IntersectionObserver(
-      entries => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) setActive(entry.target.id)
-        })
-      },
-      { rootMargin: '-40% 0px -50% 0px' }
-    )
-    ids.forEach(id => {
-      const el = document.getElementById(id)
-      if (el) observer.observe(el)
-    })
-    return () => observer.disconnect()
-  }, [])
+    document.body.style.overflow = menuOpen ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [menuOpen])
 
   const scrollTo = (href) => {
     setMenuOpen(false)
@@ -45,206 +32,193 @@ export default function Navbar() {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  const navLinkStyle = {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontFamily: 'Inter Tight, sans-serif',
+    fontSize: '0.72rem',
+    fontWeight: 600,
+    letterSpacing: '0.14em',
+    textTransform: 'uppercase',
+    color: 'var(--text-muted)',
+    padding: '8px 0',
+    transition: 'color 0.2s ease',
+  }
+
   return (
     <>
       <motion.nav
-        initial={{ y: -80, opacity: 0 }}
+        initial={{ y: -24, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
         style={{
           position: 'fixed',
           top: 0, left: 0, right: 0,
           zIndex: 100,
-          background: scrolled
-            ? 'rgba(6, 6, 16, 0.85)'
-            : 'transparent',
-          backdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
-          borderBottom: scrolled
-            ? '1px solid rgba(30, 32, 56, 0.8)'
-            : '1px solid transparent',
-          transition: 'background 0.4s ease, border-color 0.4s ease, backdrop-filter 0.4s ease',
+          background: scrolled ? 'var(--bg-nav)' : 'var(--bg-void)',
+          backdropFilter: scrolled ? 'blur(12px)' : 'none',
+          borderBottom: '1px solid var(--border)',
+          transition: 'background 0.35s ease',
         }}
       >
         <div style={{
           maxWidth: 'var(--max-w)',
           margin: '0 auto',
           padding: '0 var(--section-px)',
-          height: 68,
+          height: 'var(--nav-h)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
         }}>
 
-          {/* Logo */}
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-          >
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              fontFamily: 'Outfit, sans-serif',
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+              fontFamily: 'Inter Tight, sans-serif',
               fontWeight: 700,
-              fontSize: '1.1rem',
+              fontSize: '0.82rem',
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
               color: 'var(--text-bright)',
-            }}>
-              <div style={{
-                width: 32, height: 32,
-                borderRadius: 8,
-                background: 'linear-gradient(135deg, var(--accent), var(--blue))',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                color: '#060610',
-                fontFamily: 'JetBrains Mono, monospace',
-                boxShadow: '0 0 16px rgba(0, 229, 160, 0.3)',
-              }}>
-                SN
-              </div>
-              <span>Sobhita</span>
-            </div>
+            }}
+          >
+            Sobhita Karri
           </button>
 
-          {/* Desktop nav links */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} className="hidden md:flex">
-            {NAV_LINKS.map(link => {
-              const isActive = activeSection === link.href.replace('#','')
-              return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
+            <div className="hidden md:flex" style={{ alignItems: 'center', gap: 26 }}>
+              {NAV_LINKS.map(link => (
                 <button
                   key={link.href}
                   onClick={() => scrollTo(link.href)}
-                  style={{
-                    background: isActive ? 'rgba(0, 229, 160, 0.08)' : 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: '0.875rem',
-                    fontWeight: isActive ? 600 : 400,
-                    color: isActive ? 'var(--accent)' : 'var(--text-body)',
-                    padding: '7px 14px',
-                    borderRadius: 6,
-                    transition: 'all 0.2s ease',
-                    letterSpacing: '0.01em',
-                  }}
-                  onMouseEnter={e => {
-                    if (!isActive) {
-                      e.target.style.color = 'var(--text-bright)'
-                      e.target.style.background = 'rgba(255,255,255,0.04)'
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    if (!isActive) {
-                      e.target.style.color = 'var(--text-body)'
-                      e.target.style.background = 'none'
-                    }
-                  }}
+                  style={navLinkStyle}
+                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-bright)' }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)' }}
                 >
                   {link.label}
                 </button>
-              )
-            })}
+              ))}
+            </div>
+
+            <button
+              onClick={toggle}
+              aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={isDark ? 'Light mode' : 'Dark mode'}
+              style={{
+                background: 'none',
+                border: '1px solid var(--border-mid)',
+                width: 36,
+                height: 36,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--text-bright)',
+              }}
+            >
+              {isDark ? <FiSun size={15} /> : <FiMoon size={15} />}
+            </button>
+
             <a
-              href="/resume.pdf"
+              href={`${import.meta.env.BASE_URL}resume.pdf`}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-primary"
-              style={{ marginLeft: 8, padding: '8px 20px', fontSize: '0.85rem', borderRadius: 6 }}
+              className="hidden md:inline-flex"
+              style={{
+                ...navLinkStyle,
+                color: 'var(--text-bright)',
+                textDecoration: 'none',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-bright)' }}
             >
               Resume
             </a>
-          </div>
 
-          {/* Mobile hamburger */}
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden"
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--text-bright)', fontSize: '1.3rem',
-              display: 'flex', padding: 6,
-            }}
-          >
-            {menuOpen ? <FiX /> : <FiMenu />}
-          </button>
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="md:hidden"
+              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontFamily: 'Inter Tight, sans-serif',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                letterSpacing: '0.16em',
+                textTransform: 'uppercase',
+                color: 'var(--text-bright)',
+                padding: 4,
+              }}
+            >
+              {menuOpen ? 'Close' : 'Menu'}
+            </button>
+          </div>
         </div>
       </motion.nav>
 
-      {/* Mobile menu overlay */}
       <AnimatePresence>
         {menuOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setMenuOpen(false)}
-              style={{
-                position: 'fixed', inset: 0,
-                background: 'rgba(6,6,16,0.6)',
-                backdropFilter: 'blur(4px)',
-                zIndex: 198,
-              }}
-            />
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-              style={{
-                position: 'fixed', top: 0, right: 0, bottom: 0,
-                width: 280,
-                background: 'var(--bg-surface)',
-                borderLeft: '1px solid var(--border)',
-                zIndex: 199,
-                padding: '88px 28px 32px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 4,
-              }}
-            >
-              {NAV_LINKS.map((link, i) => (
-                <motion.button
-                  key={link.href}
-                  initial={{ opacity: 0, x: 16 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.06 }}
-                  onClick={() => scrollTo(link.href)}
-                  style={{
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: '1rem', fontWeight: 500,
-                    color: 'var(--text-body)',
-                    padding: '14px 12px',
-                    textAlign: 'left',
-                    borderRadius: 8,
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.color = 'var(--accent)'
-                    e.currentTarget.style.background = 'var(--accent-faint)'
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.color = 'var(--text-body)'
-                    e.currentTarget.style.background = 'none'
-                  }}
-                >
-                  {link.label}
-                </motion.button>
-              ))}
-              <a
-                href="/resume.pdf"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-primary"
-                style={{ marginTop: 20, justifyContent: 'center' }}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              top: 'var(--nav-h)',
+              background: 'var(--bg-void)',
+              zIndex: 99,
+              padding: '40px var(--section-px)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4,
+            }}
+          >
+            {NAV_LINKS.map((link, i) => (
+              <motion.button
+                key={link.href}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                onClick={() => scrollTo(link.href)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontFamily: 'Inter Tight, sans-serif',
+                  fontSize: 'clamp(1.6rem, 7vw, 2.2rem)',
+                  fontWeight: 700,
+                  letterSpacing: '-0.03em',
+                  color: 'var(--text-bright)',
+                  padding: '14px 0',
+                  textAlign: 'left',
+                  borderBottom: '1px solid var(--border)',
+                }}
               >
-                Download Resume
-              </a>
-            </motion.div>
-          </>
+                {link.label}
+              </motion.button>
+            ))}
+            <a
+              href={`${import.meta.env.BASE_URL}resume.pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary"
+              style={{ marginTop: 28, alignSelf: 'flex-start' }}
+            >
+              Resume
+            </a>
+            <p style={{
+              marginTop: 'auto',
+              fontFamily: 'IBM Plex Mono, monospace',
+              fontSize: '0.65rem',
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: 'var(--text-faint)',
+            }}>
+              Theme · {theme}
+            </p>
+          </motion.div>
         )}
       </AnimatePresence>
     </>

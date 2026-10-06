@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "npm run build && npx gh-pages -d dist"
+    "postbuild": "node -e \"import('node:fs').then(fs=>fs.copyFileSync('dist/index.html','dist/404.html'))\"",
+    "deploy": "npm run build && npx gh-pages -d dist -m \"Deploy portfolio to GitHub Pages\""
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.1",

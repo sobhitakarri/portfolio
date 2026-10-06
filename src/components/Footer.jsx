@@ -1,156 +1,97 @@
-import React from "react";
-import { FiGithub, FiLinkedin, FiMail } from "react-icons/fi";
-import { MapPin, Phone, Mail } from "lucide-react";
-import { TextHoverEffect, FooterBackgroundGradient } from "./ui/hover-footer";
-
-const footerLinks = [
-  {
-    title: "Navigation",
-    links: [
-      { label: "About",    href: "#about" },
-      { label: "Skills",   href: "#skills" },
-      { label: "Projects", href: "#projects" },
-      { label: "Resume",   href: "#resume" },
-      { label: "Blog",     href: "#blog" },
-    ],
-  },
-  {
-    title: "Helpful Links",
-    links: [
-      { label: "GitHub",   href: "https://github.com/sobhitakarri",                          external: true },
-      { label: "LinkedIn", href: "https://www.linkedin.com/in/sobhita-karri-a89506316/", external: true },
-      { label: "Contact",  href: "#contact", pulse: true },
-    ],
-  },
-];
-
-const contactInfo = [
-  {
-    icon: <Mail size={18} className="text-[#00e5a0]" />,
-    text: "sobhita1011@gmail.com",
-    href: "mailto:sobhita1011@gmail.com",
-  },
-  {
-    icon: <MapPin size={18} className="text-[#00e5a0]" />,
-    text: "India",
-  },
-];
+import { FiGithub, FiLinkedin, FiMail } from 'react-icons/fi'
 
 const socialLinks = [
-  { icon: <FiGithub   size={20} />, label: "GitHub",   href: "https://github.com/sobhitakarri" },
-  { icon: <FiLinkedin size={20} />, label: "LinkedIn", href: "https://www.linkedin.com/in/sobhita-karri-a89506316/" },
-  { icon: <FiMail     size={20} />, label: "Email",    href: "mailto:sobhita1011@gmail.com" },
-];
+  { icon: <FiGithub   size={16} />, label: 'GitHub',   href: 'https://github.com/sobhitakarri' },
+  { icon: <FiLinkedin size={16} />, label: 'LinkedIn', href: 'https://www.linkedin.com/in/sobhita-karri-a89506316/' },
+  { icon: <FiMail     size={16} />, label: 'Email',    href: 'mailto:sobhita1011@gmail.com' },
+]
+
+const navLinks = [
+  { label: 'About',    href: '#about' },
+  { label: 'Domains',  href: '#domains' },
+  { label: 'Projects', href: '#projects' },
+  { label: 'Contact',  href: '#contact' },
+]
 
 export default function Footer() {
   return (
-    <footer
-      className="relative rounded-3xl overflow-hidden mx-4 mb-4 mt-0"
-      style={{ background: "#060610cc" }}
-    >
-      <div className="max-w-7xl mx-auto px-8 py-12 z-40 relative">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 pb-10">
-
-          {/* Brand */}
-          <div className="flex flex-col space-y-4">
-            <div className="flex items-center space-x-2">
-              <span style={{ color: "var(--accent)" }} className="text-3xl font-extrabold">
-                &lt;/&gt;
-              </span>
-              <span className="text-white text-2xl font-bold font-display tracking-wide">
-                SOBHITA
-              </span>
+    <footer style={{
+      position: 'relative',
+      borderTop: '1px solid var(--border)',
+      background: 'var(--bg-base)',
+    }}>
+      <div style={{
+        maxWidth: 'var(--max-w)',
+        margin: '0 auto',
+        padding: '56px var(--section-px) 36px',
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: 36,
+          marginBottom: 48,
+        }}>
+          <div>
+            <div style={{
+              fontFamily: 'Inter Tight, sans-serif',
+              fontWeight: 700,
+              fontSize: '0.82rem',
+              letterSpacing: '0.16em',
+              textTransform: 'uppercase',
+              color: 'var(--text-bright)',
+              marginBottom: 12,
+            }}>
+              Sobhita Karri
             </div>
-            <p className="text-sm leading-relaxed" style={{ color: "var(--text-body)" }}>
-              Full-stack developer &amp; systems engineer crafting purposeful
-              digital experiences from first principles.
+            <p style={{
+              color: 'var(--text-muted)',
+              fontSize: '0.9rem',
+              maxWidth: 300,
+              lineHeight: 1.6,
+            }}>
+              Building intelligent systems where software, hardware, and physical autonomy converge.
             </p>
-            {/* Tech stack badge */}
-            <div
-              className="flex items-center gap-2 text-xs font-mono"
-              style={{ color: "var(--text-faint)" }}
-            >
-              <span style={{ color: "var(--accent)", opacity: 0.7 }}>{"<"}</span>
-              React · Vite · Framer Motion
-              <span style={{ color: "var(--accent)", opacity: 0.7 }}>{">"}</span>
-            </div>
           </div>
 
-          {/* Link sections */}
-          {footerLinks.map((section) => (
-            <div key={section.title}>
-              <h4 className="text-white text-base font-semibold mb-5 font-display">
-                {section.title}
-              </h4>
-              <ul className="space-y-3">
-                {section.links.map((link) => (
-                  <li key={link.label} className="relative">
-                    <a
-                      href={link.href}
-                      target={link.external ? "_blank" : undefined}
-                      rel={link.external ? "noopener noreferrer" : undefined}
-                      className="text-sm transition-colors duration-200"
-                      style={{ color: "var(--text-body)" }}
-                      onMouseEnter={e => (e.currentTarget.style.color = "var(--accent)")}
-                      onMouseLeave={e => (e.currentTarget.style.color = "var(--text-body)")}
-                    >
-                      {link.label}
-                    </a>
-                    {link.pulse && (
-                      <span
-                        className="absolute top-0.5 right-0 w-2 h-2 rounded-full animate-pulse"
-                        style={{ backgroundColor: "var(--accent)" }}
-                      />
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-
-          {/* Contact */}
-          <div>
-            <h4 className="text-white text-base font-semibold mb-5 font-display">
-              Contact
-            </h4>
-            <ul className="space-y-4">
-              {contactInfo.map((item, i) => (
-                <li key={i} className="flex items-center space-x-3">
-                  {item.icon}
-                  {item.href ? (
-                    <a
-                      href={item.href}
-                      className="text-sm transition-colors duration-200"
-                      style={{ color: "var(--text-body)" }}
-                      onMouseEnter={e => (e.currentTarget.style.color = "var(--accent)")}
-                      onMouseLeave={e => (e.currentTarget.style.color = "var(--text-body)")}
-                    >
-                      {item.text}
-                    </a>
-                  ) : (
-                    <span className="text-sm" style={{ color: "var(--text-body)" }}>
-                      {item.text}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
+          <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
+            {navLinks.map(link => (
+              <a
+                key={link.label}
+                href={link.href}
+                style={{
+                  color: 'var(--text-muted)',
+                  textDecoration: 'none',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  transition: 'color 0.2s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.color = 'var(--text-bright)'}
+                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+              >
+                {link.label}
+              </a>
+            ))}
           </div>
         </div>
 
-        {/* Divider */}
-        <div
-          style={{
-            height: 1,
-            background: "linear-gradient(90deg, transparent 0%, var(--border-mid) 30%, var(--accent) 50%, var(--border-mid) 70%, transparent 100%)",
-            marginBottom: "2rem",
-          }}
-        />
+        <div style={{
+          height: 1,
+          background: 'var(--border)',
+          marginBottom: 24,
+        }} />
 
-        {/* Bottom row */}
-        <div className="flex flex-col md:flex-row justify-between items-center text-sm gap-4">
-          {/* Social icons */}
-          <div className="flex space-x-3">
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 16,
+        }}>
+          <div style={{ display: 'flex', gap: 4 }}>
             {socialLinks.map(({ icon, label, href }) => (
               <a
                 key={label}
@@ -158,23 +99,21 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={label}
-                className="flex items-center justify-center w-9 h-9 rounded-lg border transition-all duration-200"
                 style={{
-                  borderColor: "var(--border)",
-                  color: "var(--text-muted)",
-                  background: "var(--bg-elevated)",
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 36, height: 36,
+                  border: '1px solid transparent',
+                  color: 'var(--text-faint)',
+                  textDecoration: 'none',
+                  transition: 'all 0.2s ease',
                 }}
                 onMouseEnter={e => {
-                  e.currentTarget.style.color = "var(--accent)";
-                  e.currentTarget.style.borderColor = "var(--accent)";
-                  e.currentTarget.style.transform = "translateY(-3px)";
-                  e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,229,160,0.2)";
+                  e.currentTarget.style.color = 'var(--accent)'
+                  e.currentTarget.style.borderColor = 'var(--border)'
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.color = "var(--text-muted)";
-                  e.currentTarget.style.borderColor = "var(--border)";
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "none";
+                  e.currentTarget.style.color = 'var(--text-faint)'
+                  e.currentTarget.style.borderColor = 'transparent'
                 }}
               >
                 {icon}
@@ -182,19 +121,16 @@ export default function Footer() {
             ))}
           </div>
 
-          {/* Copyright */}
-          <p style={{ color: "var(--text-faint)" }} className="font-mono text-xs">
-            © {new Date().getFullYear()} Sobhita Karri · Built with RTL-level precision
+          <p style={{
+            color: 'var(--text-faint)',
+            fontFamily: 'IBM Plex Mono, monospace',
+            fontSize: '0.68rem',
+            letterSpacing: '0.04em',
+          }}>
+            © {new Date().getFullYear()} Sobhita Karri
           </p>
         </div>
       </div>
-
-      {/* Big hover text — visible on large screens only */}
-      <div className="lg:flex hidden h-[28rem] -mt-48 -mb-32">
-        <TextHoverEffect text="SOBHITA" className="z-50" />
-      </div>
-
-      <FooterBackgroundGradient />
     </footer>
-  );
+  )
 }

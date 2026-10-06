@@ -1,17 +1,16 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useScrollFade } from '../hooks/useScrollFade'
 import { FiGithub, FiLinkedin, FiMail, FiSend } from 'react-icons/fi'
 
-// EmailJS keys — fill in from emailjs.com
 const EMAILJS_SERVICE  = 'YOUR_SERVICE_ID'
 const EMAILJS_TEMPLATE = 'YOUR_TEMPLATE_ID'
 const EMAILJS_KEY      = 'YOUR_PUBLIC_KEY'
 
 const FIELDS = [
-  { id: 'name',    type: 'text',     prompt: 'name@portfolio:~$' },
-  { id: 'email',   type: 'email',    prompt: 'mail@portfolio:~$' },
-  { id: 'message', type: 'textarea', prompt: 'msg@portfolio:~$'  },
+  { id: 'name',    type: 'text',     prompt: 'Name' },
+  { id: 'email',   type: 'email',    prompt: 'Email' },
+  { id: 'message', type: 'textarea', prompt: 'Message' },
 ]
 
 const CHANNELS = [
@@ -20,21 +19,18 @@ const CHANNELS = [
     label: 'GitHub',
     value: 'github.com/sobhitakarri',
     href: 'https://github.com/sobhitakarri',
-    color: 'var(--text-bright)',
   },
   {
     icon: FiLinkedin,
     label: 'LinkedIn',
-    value: 'linkedin.com/in/sobhita-karri-a89506316',
+    value: 'linkedin.com/in/sobhita-karri',
     href: 'https://www.linkedin.com/in/sobhita-karri-a89506316/',
-    color: 'var(--blue)',
   },
   {
     icon: FiMail,
     label: 'Email',
     value: 'sobhita1011@gmail.com',
     href: 'mailto:sobhita1011@gmail.com',
-    color: 'var(--accent)',
   },
 ]
 
@@ -51,12 +47,11 @@ export default function Contact() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.name || !form.email || !form.message) {
-      addOutput('ERROR: All fields required.', '#ff5f56')
+      addOutput('All fields required.', '#c45c26')
       return
     }
     setStatus('sending')
-    addOutput(`> Sending packet to Sobhita...`)
-    addOutput(`> Payload: { name: "${form.name}", email: "${form.email}" }`)
+    addOutput('Sending message…')
 
     try {
       const emailjs = await import('@emailjs/browser')
@@ -64,12 +59,11 @@ export default function Contact() {
         from_name: form.name, from_email: form.email, message: form.message,
       }, EMAILJS_KEY)
       setStatus('success')
-      addOutput('PACKET SENT.......... [200 OK]', 'var(--accent)')
-      addOutput('>> Message delivered successfully.', 'var(--accent)')
+      addOutput('Message sent.', 'var(--accent)')
       setForm({ name: '', email: '', message: '' })
     } catch (err) {
       setStatus('error')
-      addOutput(`ERROR [500]: ${err?.text || 'Failed to send. Try LinkedIn.'}`, '#ff5f56')
+      addOutput(err?.text || 'Failed to send. Try LinkedIn or email.', '#c45c26')
     }
   }
 
@@ -78,50 +72,26 @@ export default function Contact() {
       <div className="section-divider" />
       <div className="section-wrapper">
         <div ref={titleRef} className="fade-up">
-          <p className="section-eyebrow">05. Contact</p>
-          <h2 className="section-title">Get in <span className="accent">Touch</span></h2>
-          <p className="section-subtitle">Open for internships, collaborations, and hardware chats.</p>
+          <p className="section-label">06 Contact</p>
+          <h2 className="section-heading">Get in touch</h2>
+          <p className="section-desc">Open for collaborations, internships, and interesting conversations.</p>
         </div>
 
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-          gap: 28,
+          gap: 48,
         }}>
-          {/* Terminal contact form */}
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            {/* Terminal titlebar */}
-            <div style={{
-              background: 'var(--bg-surface)',
-              padding: '13px 20px',
-              borderBottom: '1px solid var(--border)',
-              display: 'flex', alignItems: 'center', gap: 8,
-            }}>
-              {['#ff5f56','#ffbd2e','var(--accent)'].map((c,i) => (
-                <div key={i} style={{
-                  width: 11, height: 11, borderRadius: '50%', background: c,
-                  boxShadow: i === 2 ? '0 0 6px rgba(0,229,160,0.4)' : 'none',
-                }} />
-              ))}
-              <span style={{
-                fontFamily: 'JetBrains Mono, monospace',
-                fontSize: '0.72rem',
-                color: 'var(--text-muted)',
-                marginLeft: 10,
-              }}>
-                ./contact --send
-              </span>
-            </div>
-
-            <form onSubmit={handleSubmit} style={{ padding: '8px 0 20px' }}>
+          <div style={{ borderTop: '1px solid var(--border)' }}>
+            <form onSubmit={handleSubmit}>
               {FIELDS.map(field => (
                 <div key={field.id} className="terminal-line">
                   <span className="terminal-prompt">{field.prompt}</span>
                   {field.type === 'textarea' ? (
                     <textarea
                       className="terminal-input"
-                      placeholder={`enter ${field.id}...`}
-                      rows={4}
+                      placeholder="Type here…"
+                      rows={3}
                       value={form[field.id]}
                       onChange={e => setForm({ ...form, [field.id]: e.target.value })}
                       style={{ resize: 'none', lineHeight: 1.65 }}
@@ -130,7 +100,7 @@ export default function Contact() {
                     <input
                       className="terminal-input"
                       type={field.type}
-                      placeholder={`enter ${field.id}...`}
+                      placeholder="Type here…"
                       value={form[field.id]}
                       onChange={e => setForm({ ...form, [field.id]: e.target.value })}
                     />
@@ -138,38 +108,33 @@ export default function Contact() {
                 </div>
               ))}
 
-              <div style={{ padding: '18px 20px 0' }}>
+              <div style={{ paddingTop: 24 }}>
                 <button
                   type="submit"
                   className="btn-primary"
                   disabled={status === 'sending'}
                   style={{
-                    width: '100%',
-                    justifyContent: 'center',
-                    opacity: status === 'sending' ? 0.7 : 1,
-                    gap: 8,
+                    opacity: status === 'sending' ? 0.7 : 1, gap: 8,
                   }}
                 >
-                  <FiSend size={14} />
-                  {status === 'sending' ? 'Transmitting...' : 'Send Message'}
+                  <FiSend size={13} />
+                  {status === 'sending' ? 'Sending…' : 'Send'}
                 </button>
               </div>
             </form>
 
-            {/* Terminal output log */}
             {output.length > 0 && (
               <div style={{
+                marginTop: 20,
+                paddingTop: 16,
                 borderTop: '1px solid var(--border)',
-                padding: '14px 20px',
-                fontFamily: 'JetBrains Mono, monospace',
-                fontSize: '0.75rem',
-                lineHeight: 1.8,
-                background: 'rgba(0,0,0,0.2)',
+                fontFamily: 'IBM Plex Mono, monospace',
+                fontSize: '0.72rem', lineHeight: 1.8,
               }}>
                 {output.map(o => (
                   <motion.div
                     key={o.id}
-                    initial={{ opacity: 0, x: -8 }}
+                    initial={{ opacity: 0, x: -6 }}
                     animate={{ opacity: 1, x: 0 }}
                     style={{ color: o.color }}
                   >
@@ -180,109 +145,81 @@ export default function Contact() {
             )}
           </div>
 
-          {/* Info panel */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            {/* Channels card */}
-            <div className="card" style={{ padding: '22px 24px' }}>
-              <div style={{
-                fontFamily: 'JetBrains Mono, monospace',
-                fontSize: '0.65rem',
-                color: 'var(--text-muted)',
-                marginBottom: 18,
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-              }}>
-                // Transmission Channels
-              </div>
-              {CHANNELS.map(item => (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 14,
-                    padding: '14px 0',
-                    borderBottom: '1px solid var(--border)',
-                    textDecoration: 'none',
-                    color: 'inherit',
-                    transition: 'all 0.2s ease',
-                    borderRadius: 4,
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.paddingLeft = '10px'
-                    e.currentTarget.style.borderColor = 'rgba(0,229,160,0.2)'
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.paddingLeft = '0'
-                    e.currentTarget.style.borderColor = 'var(--border)'
-                  }}
-                >
-                  <div style={{
-                    width: 38, height: 38,
-                    borderRadius: 9,
-                    background: `${item.color}15`,
-                    border: `1px solid ${item.color}30`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: item.color,
-                    flexShrink: 0,
-                  }}>
-                    <item.icon size={16} />
-                  </div>
-                  <div>
-                    <div style={{
-                      fontFamily: 'Inter, sans-serif',
-                      fontSize: '0.7rem',
-                      color: 'var(--text-muted)',
-                      marginBottom: 2,
-                    }}>
-                      {item.label}
-                    </div>
-                    <div style={{
-                      fontFamily: 'Inter, sans-serif',
-                      fontSize: '0.85rem',
-                      fontWeight: 500,
-                      color: 'var(--text-bright)',
-                    }}>
-                      {item.value}
-                    </div>
-                  </div>
-                </a>
-              ))}
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{
+              fontFamily: 'IBM Plex Mono, monospace',
+              fontSize: '0.65rem',
+              color: 'var(--text-faint)',
+              marginBottom: 8,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}>
+              Connect
+              <span style={{ width: 6, height: 6, background: 'var(--accent)' }} />
             </div>
 
-            {/* Status card */}
+            {CHANNELS.map(item => (
+              <a
+                key={item.label}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  padding: '18px 0',
+                  borderBottom: '1px solid var(--border)',
+                  textDecoration: 'none', color: 'inherit',
+                  transition: 'padding-left 0.2s ease',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.paddingLeft = '8px' }}
+                onMouseLeave={e => { e.currentTarget.style.paddingLeft = '0' }}
+              >
+                <item.icon size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                <div>
+                  <div style={{
+                    fontSize: '0.65rem', color: 'var(--text-faint)',
+                    marginBottom: 2,
+                    fontFamily: 'IBM Plex Mono, monospace',
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                  }}>
+                    {item.label}
+                  </div>
+                  <div style={{
+                    fontSize: '0.95rem', fontWeight: 500,
+                    color: 'var(--text-bright)',
+                    letterSpacing: '-0.01em',
+                  }}>
+                    {item.value}
+                  </div>
+                </div>
+              </a>
+            ))}
+
             <div style={{
-              padding: '20px 24px',
-              borderRadius: 10,
-              border: '1px solid rgba(0,229,160,0.18)',
-              background: 'linear-gradient(135deg, rgba(0,229,160,0.05), rgba(56,189,248,0.04))',
+              marginTop: 28,
+              paddingTop: 20,
+              borderTop: '1px solid var(--border)',
             }}>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                marginBottom: 10,
-              }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <span style={{
-                  width: 9, height: 9, borderRadius: '50%',
+                  width: 6, height: 6,
                   background: 'var(--accent)',
-                  boxShadow: '0 0 10px var(--accent)',
-                  animation: 'pulse-dot 2s infinite',
+                  animation: 'pulse-dot 2.5s infinite',
                   display: 'inline-block',
                 }} />
                 <span style={{
-                  fontFamily: 'Outfit, sans-serif',
-                  fontSize: '0.9rem',
-                  fontWeight: 600,
-                  color: 'var(--accent)',
+                  fontFamily: 'Inter Tight, sans-serif',
+                  fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-bright)',
                 }}>
-                  Open to Opportunities
+                  Available
                 </span>
               </div>
-              <p style={{ color: 'var(--text-body)', fontSize: '0.83rem', lineHeight: 1.7 }}>
-                Looking for internships and research roles in RTL design,
-                ASIC verification, and low-level embedded systems.
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.6 }}>
+                Looking for roles in robotics, autonomous systems, and embedded intelligence.
               </p>
             </div>
           </div>

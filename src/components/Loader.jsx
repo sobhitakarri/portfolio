@@ -1,648 +1,441 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import * as THREE from 'three'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { motion } from 'framer-motion'
 
-/* ════════════════════════════════════════════════════════════
-   DNA HELIX — Three.js WebGL canvas
-   Uses window.innerWidth/Height to avoid clientWidth=0 bug
-   ════════════════════════════════════════════════════════════ */
-function DNAScene({ onPhaseEnd }) {
-  const canvasRef = useRef(null)
+const NAME = 'SOBHITA KARRI'
+const FINAL_STATE = { 1: 'cad', 8: 'structure' }
+const VB_W = 1200
+const GROUND = 318
+const CAP = 78
+const FIRST = 0.25
+const STEP = 0.17
+const DURATION = 3.9
 
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
+const clamp01 = v => Math.min(1, Math.max(0, v))
+const easeOut = v => 1 - Math.pow(1 - v, 3)
 
-    const W = window.innerWidth
-    const H = window.innerHeight
+function letterProgress(t, order, final) {
+  const s = FIRST + order * STEP
+  return {
+    cad: easeOut(clamp01((t - s) / 0.35)),
+    structure: final === 'cad' ? 0 : easeOut(clamp01((t - s - 0.3) / 0.6)),
+    solid: final === 'solid' ? easeOut(clamp01((t - s - 0.85) / 0.55)) : 0,
+  }
+}
 
-    /* ── Renderer directly into <canvas> element ── */
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-    renderer.setSize(W, H, false)
-    renderer.setClearColor(0x000000, 0)
-
-    const scene  = new THREE.Scene()
-    const camera = new THREE.PerspectiveCamera(55, W / H, 0.1, 100)
-    camera.position.z = 6
-
-    /* ──────────────────────────────────────────────
-       BUILD PARTICLE DATA — 2 helix strands + rungs
-    ────────────────────────────────────────────── */
-    const STRAND = 200
-    const RUNGS  = 60
-    const COUNT  = STRAND * 2 + RUNGS
-
-    const origPos = new Float32Array(COUNT * 3)
-    const randDir = new Float32Array(COUNT * 3)
-    const aPhase  = new Float32Array(COUNT)
-    const aColor  = new Float32Array(COUNT * 3)  // named aColor to avoid Three.js auto-inject conflict
-
-    const C_TEAL   = new THREE.Color('#00e5a0')
-    const C_BLUE   = new THREE.Color('#38bdf8')
-    const C_VIOLET = new THREE.Color('#8b5cf6')
-
-    let idx = 0
-    const push = (x, y, z, col) => {
-      origPos[idx*3]=x; origPos[idx*3+1]=y; origPos[idx*3+2]=z
-      aColor[idx*3]=col.r; aColor[idx*3+1]=col.g; aColor[idx*3+2]=col.b  // stored per-particle
-      aPhase[idx] = Math.random() * Math.PI * 2
-      const a = Math.random()*Math.PI*2, b = Math.acos(2*Math.random()-1)
-      randDir[idx*3]=Math.sin(b)*Math.cos(a)
-      randDir[idx*3+1]=Math.sin(b)*Math.sin(a)
-      randDir[idx*3+2]=Math.cos(b)
-      idx++
-    }
-
-    // Strand A
-    for (let i = 0; i < STRAND; i++) {
-      const t = (i/STRAND - 0.5) * 7
-      push(Math.cos(t*1.5)*1.0, t*0.24, Math.sin(t*1.5)*1.0, C_TEAL)
-    }
-    // Strand B (offset π)
-    for (let i = 0; i < STRAND; i++) {
-      const t = (i/STRAND - 0.5) * 7
-      push(Math.cos(t*1.5+Math.PI)*1.0, t*0.24, Math.sin(t*1.5+Math.PI)*1.0, C_BLUE)
-    }
-    // Rungs
-    for (let i = 0; i < RUNGS; i++) {
-      const t = (i/RUNGS - 0.5) * 7
-      const fr = i/RUNGS
-      push((Math.random()-0.5)*2, t*0.24, (Math.random()-0.5)*2, C_VIOLET.clone().lerp(C_TEAL, fr))
-    }
-
-    /* ── BufferGeometry ── */
-    const geo = new THREE.BufferGeometry()
-    geo.setAttribute('position', new THREE.BufferAttribute(origPos.slice(), 3))
-    geo.setAttribute('aOrig',    new THREE.BufferAttribute(origPos, 3))
-    geo.setAttribute('aRandDir', new THREE.BufferAttribute(randDir, 3))
-    geo.setAttribute('aPhase',   new THREE.BufferAttribute(aPhase,  1))
-    geo.setAttribute('aColor',   new THREE.BufferAttribute(aColor,  3))
-
-    /* ── ShaderMaterial — GLSL glow dots + explode vortex ── */
-    const mat = new THREE.ShaderMaterial({
-      uniforms: {
-        uTime:    { value: 0 },
-        uExplode: { value: 0 },
-        uFade:    { value: 0 },
-      },
-      vertexShader: `
-        attribute vec3  aOrig;
-        attribute vec3  aRandDir;
-        attribute float aPhase;
-        attribute vec3  aColor;
-        uniform   float uTime;
-        uniform   float uExplode;
-        uniform   float uFade;
-        varying   vec3  vColor;
-        varying   float vBright;
-
-
-        void main(){
-          vColor = aColor;
-
-          // Gentle breathe
-          float b  = sin(uTime * 2.0 + aPhase) * 0.035;
-          vec3  p  = aOrig + vec3(b, b*0.5, b);
-
-          // Explode outward + twist vortex
-          p += aRandDir * uExplode * 5.5;
-          float tw = uExplode * 4.5;
-          float ca = cos(tw+aPhase), sa = sin(tw+aPhase);
-          p.xz  = vec2(p.x*ca - p.z*sa, p.x*sa + p.z*ca);
-
-          // Collapse to zero on fade
-          p *= 1.0 - uFade * 0.7;
-
-          gl_Position  = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
-
-          float pulse  = 0.4 + 0.6 * sin(uTime * 3.0 + aPhase);
-          vBright      = pulse;
-          gl_PointSize = (2.8 + pulse * 2.0) * (1.0 - uFade * 0.85)
-                         * (320.0 / max(-gl_Position.z, 0.1));
-        }
-      `,
-      fragmentShader: `
-        varying vec3  vColor;
-        varying float vBright;
-        uniform float uFade;
-
-        void main(){
-          vec2  uv = gl_PointCoord - 0.5;
-          float r  = length(uv);
-          if(r > 0.5) discard;
-
-          float core = 1.0 - smoothstep(0.0, 0.20, r);
-          float halo = 1.0 - smoothstep(0.20, 0.5, r);
-          float lum  = core + halo * 0.4 * (0.6 + vBright * 0.4);
-
-          gl_FragColor = vec4(vColor * lum * 1.3, lum * (1.0 - uFade));
-        }
-      `,
-      transparent:  true,
-      depthWrite:   false,
-      blending:     THREE.AdditiveBlending,
-    })
-
-    const points = new THREE.Points(geo, mat)
-    scene.add(points)
-
-    /* ── Timeline uniforms ── */
-    let explodeT = -1, fadeT = -1, phaseDone = false
-    const startTime = performance.now()
-    let raf
-
-    const tick = () => {
-      raf = requestAnimationFrame(tick)
-      const t = (performance.now() - startTime) / 1000
-      mat.uniforms.uTime.value = t
-
-      points.rotation.y = t * 0.3
-
-      if (t > 1.6 && explodeT < 0) explodeT = t
-      if (explodeT > 0) {
-        const ep = Math.min((t - explodeT) / 1.1, 1)
-        mat.uniforms.uExplode.value = ep
-
-        if (ep > 0.65 && fadeT < 0) fadeT = t
-      }
-      if (fadeT > 0) {
-        const fp = Math.min((t - fadeT) / 0.75, 1)
-        mat.uniforms.uFade.value = fp
-        if (fp >= 1 && !phaseDone) { phaseDone = true; onPhaseEnd() }
-      }
-
-      renderer.render(scene, camera)
-    }
-    tick()
-
-    const onResize = () => {
-      const nW = window.innerWidth, nH = window.innerHeight
-      camera.aspect = nW / nH
-      camera.updateProjectionMatrix()
-      renderer.setSize(nW, nH, false)
-    }
-    window.addEventListener('resize', onResize)
-
-    return () => {
-      cancelAnimationFrame(raf)
-      window.removeEventListener('resize', onResize)
-      renderer.dispose()
-      geo.dispose()
-      mat.dispose()
-    }
-  }, [onPhaseEnd])
+function Letter({ ch, x, w, i, st, final }) {
+  const top = GROUND - CAP - 8
+  const h = GROUND + 4 - top
+  const sY = GROUND + 4 - h * st.structure
+  const fY = GROUND + 4 - h * st.solid
+  const cadOpacity = final === 'solid' ? st.cad * (1 - st.solid * 0.85) : st.cad
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: 'absolute',
-        inset: 0,
-        width: '100%',
-        height: '100%',
-        display: 'block',
-      }}
-    />
+    <g>
+      <defs>
+        <clipPath id={`ld-s-${i}`}>
+          <rect x={x - 4} y={sY} width={w + 8} height={h * st.structure} />
+        </clipPath>
+        <clipPath id={`ld-f-${i}`}>
+          <rect x={x - 4} y={fY} width={w + 8} height={h * st.solid} />
+        </clipPath>
+      </defs>
+
+      <text x={x} y={GROUND} className="ld-text ld-cad" style={{ opacity: cadOpacity }}>{ch}</text>
+
+      {st.structure > 0 && (
+        <text x={x} y={GROUND} className="ld-text ld-structure" clipPath={`url(#ld-s-${i})`}>{ch}</text>
+      )}
+      {st.structure > 0.02 && st.structure < 0.98 && (
+        <line x1={x - 3} y1={sY} x2={x + w + 3} y2={sY} className="ld-ink-thin" />
+      )}
+
+      {st.solid > 0 && (
+        <text x={x} y={GROUND} className="ld-text ld-solid" clipPath={`url(#ld-f-${i})`}>{ch}</text>
+      )}
+      {st.solid > 0.02 && st.solid < 0.98 && (
+        <line x1={x - 3} y1={fY} x2={x + w + 3} y2={fY} className="ld-accent" />
+      )}
+
+      {final === 'cad' && st.cad > 0 && (
+        <g style={{ opacity: st.cad }}>
+          <line x1={x} y1={GROUND + 14} x2={x + w} y2={GROUND + 14} className="ld-accent" />
+          <line x1={x} y1={GROUND + 10} x2={x} y2={GROUND + 18} className="ld-accent" />
+          <line x1={x + w} y1={GROUND + 10} x2={x + w} y2={GROUND + 18} className="ld-accent" />
+          <line x1={x + w / 2} y1={top - 4} x2={x + w / 2} y2={GROUND + 4} className="ld-accent ld-dashed" />
+          <text x={x + w / 2} y={top - 10} textAnchor="middle" className="ld-label ld-label-accent">CAD</text>
+        </g>
+      )}
+      {final === 'structure' && st.structure > 0.6 && (
+        <text x={x + w / 2} y={top - 10} textAnchor="middle" className="ld-label" style={{ opacity: st.structure }}>
+          Frame
+        </text>
+      )}
+    </g>
   )
 }
 
-/* ════════════════════════════════════════════════════════════
-   CHIP FLOORPLAN 3D — IC die with rising functional blocks
-   + signal particles routing between them (Three.js / WebGL)
-   ════════════════════════════════════════════════════════════ */
-const BLOCKS = [
-  { id:'ARM',    x:0,    z:0,    w:1.0, d:1.0, maxH:0.22, color:'#2a2a2a', label:'ARM Cortex-M3', delay:0 },
-  { id:'SRAM',   x:1.0,  z:-0.5, w:1.2, d:0.3, maxH:0.18, color:'#2461b5', label:'8-64KB SRAM', delay:200 },
-  { id:'FLASH',  x:0.9,  z:-0.1, w:1.4, d:0.3, maxH:0.20, color:'#1a4a99', label:'256KB FLASH', delay:300 },
-  { id:'PWR',    x:-1.3, z:-0.5, w:0.6, d:0.4, maxH:0.18, color:'#2461b5', label:'Pwr Mgmt', delay:400 },
-  { id:'SWD',    x:-0.2, z:-1.6, w:0.6, d:0.3, maxH:0.18, color:'#2461b5', label:'SWD', delay:450 },
-  { id:'UDB1',   x:0.5,  z:-1.5, w:0.6, d:0.3, maxH:0.18, color:'#1e8a42', label:'UDB', delay:500 },
-  { id:'UDB2',   x:1.2,  z:-1.5, w:0.6, d:0.3, maxH:0.18, color:'#1e8a42', label:'UDB', delay:550 },
-  { id:'SPI',    x:1.3,  z:-1.1, w:0.6, d:0.3, maxH:0.18, color:'#1e8a42', label:'SPI', delay:600 },
-  { id:'I2C',    x:1.4,  z:-0.7, w:0.6, d:0.3, maxH:0.18, color:'#1e8a42', label:'I2C', delay:650 },
-  { id:'TCPWM1', x:-0.2, z: 0.6, w:0.7, d:0.3, maxH:0.18, color:'#1e8a42', label:'TCPWM', delay:700 },
-  { id:'TCPWM2', x:-0.1, z: 1.0, w:0.7, d:0.3, maxH:0.18, color:'#1e8a42', label:'TCPWM', delay:750 },
-  { id:'ADC1',   x:-0.9, z:-0.1, w:0.7, d:0.3, maxH:0.18, color:'#b55a14', label:'SAR ADC', delay:800 },
-  { id:'ADC2',   x:-1.1, z: 0.3, w:0.7, d:0.3, maxH:0.18, color:'#b55a14', label:'SAR ADC', delay:850 },
-  { id:'DAC1',   x:-1.0, z: 0.7, w:0.6, d:0.3, maxH:0.18, color:'#b55a14', label:'DAC', delay:900 },
-  { id:'DAC2',   x:-0.9, z: 1.1, w:0.6, d:0.3, maxH:0.18, color:'#b55a14', label:'DAC', delay:950 },
-  { id:'CMP1',   x:-1.0, z: 1.5, w:0.6, d:0.3, maxH:0.18, color:'#b55a14', label:'CMP', delay:1000 },
-  { id:'CAN',    x:-0.7, z:-0.9, w:0.6, d:0.3, maxH:0.18, color:'#9e1f1f', label:'CAN', delay:1100 },
-  { id:'LIN',    x:0.4,  z:-0.9, w:0.6, d:0.3, maxH:0.18, color:'#9e1f1f', label:'LIN', delay:1150 },
-  { id:'USB',    x:1.3,  z: 0.4, w:0.5, d:0.5, maxH:0.18, color:'#9e1f1f', label:'USB 2.0', delay:1200 },
-  { id:'CAP',    x:-1.3, z:-1.0, w:0.7, d:0.3, maxH:0.18, color:'#a07800', label:'CapSense', delay:1300 },
-  { id:'DMA',    x:0.8,  z: 0.6, w:0.6, d:0.3, maxH:0.18, color:'#a07800', label:'DMA', delay:1350 },
-  { id:'GPIO',   x:-1.2, z:-1.5, w:0.8, d:0.3, maxH:0.18, color:'#7030b0', label:'GPIO x72', delay:1400 },
-]
+function Crane({ x, height, jib, t, phase = 0, flip = false }) {
+  const top = GROUND - height
+  const m = 5
+  let mast = ''
+  for (let y = GROUND; y > top; y -= 14) {
+    const y2 = Math.max(top, y - 14)
+    mast += `M ${-m} ${y} L ${m} ${y2} `
+  }
+  let boom = ''
+  for (let bx = -jib * 0.32; bx < jib; bx += 12) {
+    boom += `M ${bx} ${top + 6} L ${bx + 6} ${top} L ${bx + 12} ${top + 6} `
+  }
+  const trolley = jib * (0.3 + 0.55 * (0.5 + 0.5 * Math.sin(t * 0.9 + phase)))
+  const hookY = top + 26 + 64 * (0.5 + 0.5 * Math.sin(t * 1.4 + phase * 1.7))
 
-function createLabelTexture(text, bgColor) {
-  const canvas = document.createElement('canvas')
-  canvas.width = 512
-  canvas.height = 128
-  const ctx = canvas.getContext('2d')
-  ctx.fillStyle = bgColor
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
-  ctx.font = 'bold 48px "JetBrains Mono", monospace'
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillStyle = '#ffffff'
-  ctx.fillText(text, 256, 64)
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.anisotropy = 4
-  return texture
+  return (
+    <g transform={`translate(${x} 0)${flip ? ' scale(-1 1)' : ''}`} className="ld-ink">
+      <line x1={-m} y1={GROUND} x2={-m} y2={top} />
+      <line x1={m} y1={GROUND} x2={m} y2={top} />
+      <path d={mast} className="ld-ink-thin" />
+      <path d={`M ${-m} ${top} L 0 ${top - 22} L ${m} ${top}`} />
+      <line x1={-jib * 0.32} y1={top} x2={jib} y2={top} />
+      <line x1={-jib * 0.32} y1={top + 6} x2={jib} y2={top + 6} />
+      <path d={boom} className="ld-ink-thin" />
+      <line x1={0} y1={top - 22} x2={jib * 0.8} y2={top} className="ld-ink-thin" />
+      <line x1={0} y1={top - 22} x2={-jib * 0.3} y2={top} className="ld-ink-thin" />
+      <rect x={-jib * 0.32} y={top + 6} width={18} height={12} className="ld-fill" />
+      <rect x={m} y={top + 6} width={10} height={9} />
+      <rect x={trolley - 4} y={top + 5} width={8} height={4} className="ld-fill" />
+      <line x1={trolley} y1={top + 9} x2={trolley} y2={hookY} className="ld-ink-thin" />
+      <rect x={trolley - 12} y={hookY} width={24} height={4} className="ld-accent-fill" />
+    </g>
+  )
 }
 
-function ChipFloorplan3D({ onDone }) {
-  const canvasRef = useRef(null)
+function Arm({ x, t, phase = 0, flip = false }) {
+  const a1 = -68 + 16 * Math.sin(t * 1.6 + phase)
+  const a2 = 58 + 24 * Math.sin(t * 2.1 + phase + 1)
+  const spark = Math.sin(t * 13 + phase) > 0.55 ? 1 : 0.15
 
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const W = window.innerWidth, H = window.innerHeight
+  return (
+    <g transform={`translate(${x} ${GROUND})${flip ? ' scale(-1 1)' : ''}`}>
+      <rect x={-14} y={-6} width={28} height={6} className="ld-fill" />
+      <rect x={-6} y={-14} width={12} height={8} className="ld-ink" />
+      <g transform={`translate(0 -14) rotate(${a1})`}>
+        <line x1={0} y1={0} x2={46} y2={0} className="ld-ink-thick" />
+        <circle r={4} className="ld-joint" />
+        <g transform={`translate(46 0) rotate(${a2})`}>
+          <line x1={0} y1={0} x2={36} y2={0} className="ld-ink-thick" />
+          <circle r={3} className="ld-joint" />
+          <g transform="translate(36 0)">
+            <path d="M 0 -4 L 8 -4 M 0 4 L 8 4" className="ld-ink" />
+            <circle cx={11} r={2.4} className="ld-accent-fill" style={{ opacity: spark }} />
+          </g>
+        </g>
+      </g>
+    </g>
+  )
+}
 
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true })
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-    renderer.setSize(W, H, false)
-    renderer.shadowMap.enabled = true
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap
-    renderer.outputColorSpace = THREE.SRGBColorSpace
-    renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.toneMappingExposure = 1.1
-    renderer.setClearColor(0x000000, 0)
+function Conveyor({ t, x1, x2 }) {
+  const y = GROUND + 34
+  const len = x2 - x1
+  const speed = 70
+  const gap = 140
+  const rollers = []
+  for (let rx = x1 + 8; rx <= x2 - 8; rx += 48) rollers.push(rx)
+  const boxes = []
+  for (let k = 0; k * gap < len + gap; k++) {
+    const bx = x1 + ((k * gap + t * speed) % (len + gap)) - gap
+    if (bx < x1 + 4 || bx > x2 - 22) continue
+    const bw = 12 + (k % 3) * 4
+    const bh = 8 + (k % 2) * 4
+    boxes.push(
+      <rect
+        key={k}
+        x={bx}
+        y={y - 6 - bh}
+        width={bw}
+        height={bh}
+        className={k % 4 === 1 ? 'ld-accent-fill' : k % 2 ? 'ld-fill' : 'ld-ink'}
+      />
+    )
+  }
 
-    const scene  = new THREE.Scene()
-    const camera = new THREE.PerspectiveCamera(45, W/H, 0.1, 100)
-    camera.position.set(0, 4, 4.5)
-    camera.lookAt(0, 0, 0)
+  return (
+    <g>
+      <path
+        d={`M ${x1} ${y - 6} L ${x2} ${y - 6} A 6 6 0 0 1 ${x2} ${y + 6} L ${x1} ${y + 6} A 6 6 0 0 1 ${x1} ${y - 6}`}
+        className="ld-ink"
+      />
+      <line
+        x1={x1}
+        y1={y - 6}
+        x2={x2}
+        y2={y - 6}
+        className="ld-accent"
+        style={{ strokeDasharray: '4 14', strokeDashoffset: -t * speed }}
+      />
+      {rollers.map(rx => (
+        <g key={rx} transform={`translate(${rx} ${y}) rotate(${(t * speed * 57.3) / 4.5})`}>
+          <circle r={4.5} className="ld-ink-thin" />
+          <line x1={-4.5} y1={0} x2={4.5} y2={0} className="ld-ink-thin" />
+        </g>
+      ))}
+      {rollers.filter((_, i) => i % 4 === 0).map(rx => (
+        <line key={`leg-${rx}`} x1={rx} y1={y + 6} x2={rx} y2={y + 22} className="ld-ink-thin" />
+      ))}
+      {boxes}
+    </g>
+  )
+}
 
-    /* ── 3-Point PBR Lighting ── */
-    const hemi = new THREE.HemisphereLight(0xfff8e7, 0x1a1a2e, 1.0)
-    scene.add(hemi)
+function SurveyDrone({ x, y, t, width }) {
+  const bob = Math.sin(t * 2.2) * 4
+  const sweep = Math.sin(t * 1.8) * width * 0.35
+  return (
+    <g transform={`translate(${x} ${y + bob})`}>
+      <path
+        d={`M 0 6 L ${sweep - 10} ${GROUND - y - bob - 4} L ${sweep + 10} ${GROUND - y - bob - 4} Z`}
+        className="ld-scan"
+      />
+      <line x1={-12} y1={0} x2={12} y2={0} className="ld-ink" />
+      <rect x={-5} y={-2} width={10} height={6} className="ld-fill" />
+      <ellipse cx={-12} cy={-2} rx={6} ry={1.6} className="ld-accent" />
+      <ellipse cx={12} cy={-2} rx={6} ry={1.6} className="ld-accent" />
+    </g>
+  )
+}
 
-    // Key: warm overhead (fills chip from top-left)
-    const keyLight = new THREE.DirectionalLight(0xfff5d0, 3.5)
-    keyLight.position.set(4, 9, 3)
-    keyLight.castShadow = true
-    keyLight.shadow.mapSize.width = 2048
-    keyLight.shadow.mapSize.height = 2048
-    keyLight.shadow.bias = -0.0003
-    keyLight.shadow.camera.near = 0.1
-    keyLight.shadow.camera.far = 30
-    keyLight.shadow.camera.left = -6
-    keyLight.shadow.camera.right = 6
-    keyLight.shadow.camera.top = 6
-    keyLight.shadow.camera.bottom = -6
-    scene.add(keyLight)
+export default function Loader({ onDone }) {
+  const [t, setT] = useState(0)
+  const [layout, setLayout] = useState(null)
+  const [leaving, setLeaving] = useState(false)
+  const measureRef = useRef(null)
+  const doneRef = useRef(false)
 
-    // Rim: cold blue from behind to separate chip from bg
-    const rimLight = new THREE.DirectionalLight(0x8ab4e8, 1.8)
-    rimLight.position.set(-3, 2, -5)
-    scene.add(rimLight)
-
-    // Bounce: subtle warm orange from low-front (fakes PCB bounce)
-    const bounceLight = new THREE.PointLight(0xff8833, 0.6, 8)
-    bounceLight.position.set(0, -0.5, 2.5)
-    scene.add(bounceLight)
-
-    /* ── IC Body ── */
-    const bodyGeo = new THREE.BoxGeometry(4.2, 0.2, 4.2)
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.85, metalness: 0.15 })
-    const body = new THREE.Mesh(bodyGeo, bodyMat)
-    body.position.y = -0.1
-    body.receiveShadow = true
-    scene.add(body)
-
-    /* ── Gold Dots (Vias) ── */
-    const dotMat = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.2, metalness: 0.9 })
-    const dotGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.01, 8)
-    for(let x = -1.8; x <= 1.8; x += 0.4) {
-      for(let z = -1.8; z <= 1.8; z += 0.4) {
-        if (Math.abs(x) > 1.4 || Math.abs(z) > 1.4) {
-          const dot = new THREE.Mesh(dotGeo, dotMat)
-          dot.position.set(x, 0.005, z)
-          scene.add(dot)
-        }
-      }
-    }
-
-    /* ── Gull-Wing Pins (L-shaped, 2 boxes per pin) ── */
-    const pinMat = new THREE.MeshStandardMaterial({ color: 0xb8b8b8, roughness: 0.25, metalness: 0.95 })
-    const PITCH = 0.2, BODY_EDGE = 2.1, FOOT_REACH = 0.5
-    for (let i = -1.8; i <= 1.8; i += PITCH) {
-      // Each side: vertical leg + horizontal foot
-      const sides = [
-        { axis:'z', sign: 1 },  // front
-        { axis:'z', sign:-1 },  // back
-        { axis:'x', sign: 1 },  // right
-        { axis:'x', sign:-1 },  // left
-      ]
-      sides.forEach(({ axis, sign }) => {
-        // Vertical leg
-        const legGeo = new THREE.BoxGeometry(
-          axis==='z' ? 0.07 : 0.07,
-          0.22,
-          axis==='z' ? 0.07 : 0.07
-        )
-        const leg = new THREE.Mesh(legGeo, pinMat)
-        if (axis==='z') leg.position.set(i, -0.01, sign * BODY_EDGE)
-        else             leg.position.set(sign * BODY_EDGE, -0.01, i)
-        leg.receiveShadow = true
-        leg.castShadow   = true
-        scene.add(leg)
-
-        // Horizontal foot
-        const footGeo = new THREE.BoxGeometry(
-          axis==='z' ? 0.07 : FOOT_REACH,
-          0.04,
-          axis==='z' ? FOOT_REACH : 0.07
-        )
-        const foot = new THREE.Mesh(footGeo, pinMat)
-        const footOffset = BODY_EDGE + FOOT_REACH / 2
-        if (axis==='z') foot.position.set(i, -0.12, sign * footOffset)
-        else             foot.position.set(sign * footOffset, -0.12, i)
-        foot.receiveShadow = true
-        scene.add(foot)
-      })
-    }
-
-    /* ── Build block meshes ── */
-    const blockMeshes = {}
-    const blockTargetH = {}
-    BLOCKS.forEach(b => {
-      const topTex = createLabelTexture(b.label, b.color)
-      // Side: matte molded plastic — rougher, slight sheen
-      const matSide = new THREE.MeshStandardMaterial({
-        color: b.color, roughness: 0.72, metalness: 0.0,
-        transparent: true, opacity: 0.0
-      })
-      // Top: slight gloss to show the label texture cleanly
-      const matTop = new THREE.MeshStandardMaterial({
-        map: topTex, roughness: 0.45, metalness: 0.05,
-        transparent: true, opacity: 0.0
-      })
-      const materials = [matSide, matSide, matTop, matSide, matSide, matSide]
-      const geo = new THREE.BoxGeometry(b.w, 0.001, b.d)
-      const mesh = new THREE.Mesh(geo, materials)
-      mesh.position.set(b.x, 0.005, b.z)
-      mesh.castShadow = true
-      mesh.receiveShadow = true
-      scene.add(mesh)
-      blockMeshes[b.id] = { mesh, materials, b }
-      blockTargetH[b.id] = 0
-    })
-
-    /* ── Animate block rise after delay ── */
-    BLOCKS.forEach(b => {
-      setTimeout(() => { blockTargetH[b.id] = b.maxH }, b.delay)
-    })
-
-    /* ── Progress counter ── */
-    let progress = 0
-    const totalDuration = 2800
-    const startTime = performance.now()
-    let raf, done = false
-
-    const tick = () => {
-      raf = requestAnimationFrame(tick)
-      const elapsed = performance.now() - startTime
-      progress = Math.min(elapsed / totalDuration, 1)
-
-      /* Rise blocks */
-      BLOCKS.forEach(b => {
-        const bm = blockMeshes[b.id]
-        const tH = blockTargetH[b.id]
-        if (tH === 0) return
-        
-        const curH = bm.mesh.scale.y === 1 ? 0.001 : bm.mesh.geometry.parameters.height * bm.mesh.scale.y
-        const newH = Math.min(curH + tH * 0.04, tH)
-        const sc   = newH / bm.mesh.geometry.parameters.height
-        bm.mesh.scale.y = sc
-        bm.mesh.position.y = newH / 2 + 0.005
-        
-        const ramp = Math.min(sc / (tH / bm.b.maxH), 1)
-        bm.materials.forEach(m => { m.opacity = ramp })
-      })
-
-      /* Gentle cinematic sway (close-up) */
-      const t = performance.now() * 0.0003
-      camera.position.x = Math.sin(t * 0.7) * 1.5
-      camera.position.z = 4.2 + Math.cos(t) * 0.8
-      camera.position.y = 3.5 + Math.sin(t * 0.5) * 0.4
-      camera.lookAt(0, 0, 0)
-
-      renderer.render(scene, camera)
-
-      if (progress >= 1 && !done) {
-        done = true
-        setTimeout(onDone, 600)
-      }
-    }
-    tick()
-
-    const onResize = () => {
-      const nW=window.innerWidth, nH=window.innerHeight
-      camera.aspect=nW/nH; camera.updateProjectionMatrix()
-      renderer.setSize(nW,nH,false)
-    }
-    window.addEventListener('resize', onResize)
-
-    return () => {
-      cancelAnimationFrame(raf)
-      window.removeEventListener('resize', onResize)
-      renderer.dispose()
-    }
+  const finish = useCallback(() => {
+    if (doneRef.current) return
+    doneRef.current = true
+    setLeaving(true)
+    setTimeout(() => {
+      document.body.style.overflow = ''
+      onDone?.()
+    }, 650)
   }, [onDone])
 
-  return (
-    <>
-      <canvas ref={canvasRef} style={{ position:'absolute', inset:0, width:'100%', height:'100%', display:'block' }} />
-      {/* Progress ring overlay */}
-      <div style={{
-        position:'absolute', bottom:40, left:'50%', transform:'translateX(-50%)',
-        fontFamily:'JetBrains Mono,monospace', fontSize:'0.68rem',
-        color:'rgba(0,229,160,0.5)', letterSpacing:'0.15em', textAlign:'center',
-        pointerEvents:'none',
-      }}>
-        <div style={{ color:'rgba(0,229,160,0.35)', fontSize:'0.6rem', marginBottom:4 }}>
-          IC FLOORPLAN SYNTHESIS
-        </div>
-      </div>
-    </>
-  )
-}
-
-/* ════════════════════════════════════════════════════════════
-   MAIN LOADER
-   ════════════════════════════════════════════════════════════ */
-export default function Loader({ onComplete }) {
-  const [phase,    setPhase]    = useState('dna')   // dna | log
-  const [showSkip, setShowSkip] = useState(false)
-  const [exiting,  setExiting]  = useState(false)
-
-  const doExit = useCallback(() => {
-    if (exiting) return
-    setExiting(true)
-    setTimeout(onComplete, 650)
-  }, [exiting, onComplete])
-
   useEffect(() => {
-    const t = setTimeout(() => setShowSkip(true), 1500)
-    return () => clearTimeout(t)
+    document.body.style.overflow = 'hidden'
+    const onKey = e => { if (e.key === 'Escape') finish() }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
+    }
+  }, [finish])
+
+  useLayoutEffect(() => {
+    let cancelled = false
+    const measure = () => {
+      const el = measureRef.current
+      if (!el || cancelled) return
+      const total = el.getComputedTextLength()
+      const offset = (VB_W - total) / 2
+      const letters = [...NAME].map((ch, i) => {
+        const start = el.getStartPositionOfChar(i).x
+        const end = el.getEndPositionOfChar(i).x
+        return { ch, x: offset + start, w: end - start }
+      })
+      setLayout({ letters, left: offset, width: total })
+    }
+    const timeout = setTimeout(measure, 900)
+    document.fonts?.ready.then(() => {
+      clearTimeout(timeout)
+      measure()
+    })
+    return () => {
+      cancelled = true
+      clearTimeout(timeout)
+    }
   }, [])
 
+  useEffect(() => {
+    if (!layout) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setT(DURATION)
+      const id = setTimeout(finish, 700)
+      return () => clearTimeout(id)
+    }
+    let raf = 0
+    const t0 = performance.now()
+    const tick = () => {
+      const s = (performance.now() - t0) / 1000
+      setT(s)
+      if (s >= DURATION + 0.45) {
+        finish()
+        return
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [layout, finish])
+
+  const letters = layout?.letters ?? []
+  let order = 0
+  const built = letters.map((l, i) => {
+    if (l.ch === ' ') return null
+    const final = FINAL_STATE[i] ?? 'solid'
+    const st = letterProgress(t, order++, final)
+    return { ...l, i, final, st }
+  }).filter(Boolean)
+
+  const doneCount = built.filter(b =>
+    b.final === 'solid' ? b.st.solid >= 1 : b.final === 'structure' ? b.st.structure >= 1 : b.st.cad >= 1
+  ).length
+  const progress = clamp01(t / DURATION)
+
+  const left = layout?.left ?? 195
+  const width = layout?.width ?? 810
+  const at = (i, f = 0.5) => (letters[i] ? letters[i].x + letters[i].w * f : left + (width * i) / NAME.length)
+  const cadLetter = letters[1]
+
   return (
-    <AnimatePresence>
-      {!exiting && (
-        <motion.div
-          key="loader"
-          initial={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.65, ease: 'easeInOut' }}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            background: '#060610',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            overflow: 'hidden',
-          }}
+    <motion.div
+      initial={{ opacity: 1 }}
+      animate={{ opacity: leaving ? 0 : 1 }}
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      onClick={finish}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        background: 'var(--bg-void)',
+        color: 'var(--text-bright)',
+        display: 'grid',
+        gridTemplateRows: 'auto 1fr auto',
+        cursor: 'pointer',
+      }}
+    >
+      <div style={{
+        height: 'var(--nav-h)',
+        padding: '0 var(--section-px)',
+        borderBottom: '1px solid var(--border)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        fontFamily: 'Inter Tight, sans-serif',
+        fontSize: '0.72rem',
+        fontWeight: 600,
+        letterSpacing: '0.16em',
+        textTransform: 'uppercase',
+      }}>
+        <span style={{ fontWeight: 700, letterSpacing: '0.18em' }}>Sobhita Karri</span>
+        <span style={{ color: 'var(--text-muted)' }}>Skip →</span>
+      </div>
+
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '0 var(--section-px)',
+        minHeight: 0,
+      }}>
+        <svg
+          viewBox={`${left - 130} 20 ${width + 260} 380`}
+          style={{ width: '100%', maxWidth: 1100, height: 'auto', maxHeight: '100%', overflow: 'visible' }}
+          aria-label="Building Sobhita Karri"
+          role="img"
         >
-          {/* ── THREE.JS DNA CANVAS ── */}
-          <AnimatePresence>
-            {phase === 'dna' && (
-              <motion.div key="dna-wrap"
-                style={{ position:'absolute', inset:0, zIndex:0 }}
-                exit={{ opacity:0 }} transition={{ duration:0.5 }}
-              >
-                <DNAScene onPhaseEnd={() => setPhase('log')} />
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <defs>
+            <pattern id="ld-scaffold" width="12" height="12" patternUnits="userSpaceOnUse">
+              <path d="M 0 0 H 12 M 0 0 V 12 M 0 12 L 12 0" className="ld-ink-thin" />
+            </pattern>
+          </defs>
 
-          {/* ── THREE.JS CHIP FLOORPLAN CANVAS ── */}
-          <AnimatePresence>
-            {phase === 'log' && (
-              <motion.div key="chip-wrap"
-                style={{ position:'absolute', inset:0, zIndex:0 }}
-                initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-                transition={{ duration:0.6 }}
-              >
-                <ChipFloorplan3D onDone={doExit} />
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <text ref={measureRef} x={0} y={-2000} className="ld-text" style={{ visibility: 'hidden' }}>
+            {NAME}
+          </text>
 
-          {/* Vignette — lighter for chip phase so 3D is visible */}
-          <div style={{
-            position:'absolute', inset:0, pointerEvents:'none', zIndex:1,
-            background: phase === 'log'
-              ? 'radial-gradient(ellipse at center, transparent 50%, #060610 100%)'
-              : 'radial-gradient(ellipse at center, transparent 20%, #060610 85%)',
-            transition: 'background 0.6s ease',
-          }}/>
+          {Array.from({ length: Math.ceil((width + 260) / 80) + 1 }, (_, k) => {
+            const gx = left - 130 + k * 80
+            return <line key={gx} x1={gx} y1={40} x2={gx} y2={GROUND} className="ld-grid" />
+          })}
+          <line x1={left - 130} y1={GROUND - 200} x2={left + width + 130} y2={GROUND - 200} className="ld-grid ld-dashed" />
+          <text x={left - 124} y={GROUND - 206} className="ld-label">LVL +24.0</text>
 
-          {/* ── CENTER UI ── */}
-          <div style={{ position:'relative', zIndex:10, textAlign:'center' }}>
-            <AnimatePresence mode="wait">
+          <Crane x={at(2, 0.6)} height={250} jib={210} t={t} phase={0} />
+          <Crane x={at(10, 0.4)} height={280} jib={240} t={t} phase={2.1} flip />
 
-              {phase === 'dna' && (
-                <motion.div key="dna-ui"
-                  initial={{opacity:0,y:14}} animate={{opacity:1,y:0}}
-                  exit={{opacity:0,scale:0.9}}
-                  transition={{delay:0.3, duration:0.6, ease:[0.22,1,0.36,1]}}
-                >
-                  <div style={{
-                    fontFamily:'JetBrains Mono,monospace',
-                    fontSize:'0.6rem', color:'rgba(0,229,160,0.25)',
-                    letterSpacing:'0.35em', textTransform:'uppercase', marginBottom:12,
-                  }}>
-                    Sobhita Chip Inc. · REV 1.0
-                  </div>
-
-                  <div style={{
-                    fontFamily:'Outfit,sans-serif', fontWeight:800,
-                    fontSize:'clamp(3rem,9vw,6rem)',
-                    letterSpacing:'-0.04em', lineHeight:1,
-                    background:'linear-gradient(135deg,#00e5a0 0%,#38bdf8 50%,#8b5cf6 100%)',
-                    WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
-                    backgroundClip:'text',
-                    filter:'drop-shadow(0 0 40px rgba(0,229,160,0.55))',
-                  }}>
-                    SONNB
-                  </div>
-
-                  <motion.div
-                    initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.9}}
-                    style={{
-                      fontFamily:'JetBrains Mono,monospace',
-                      fontSize:'0.72rem', color:'rgba(90,100,120,0.8)',
-                      letterSpacing:'0.22em', marginTop:14,
-                    }}
-                  >
-                    RTL · FPGA · VLSI
-                  </motion.div>
-                </motion.div>
-              )}
-
-              {phase === 'log' && (
-                <motion.div key="chip-ui"
-                  initial={{opacity:0}} animate={{opacity:1}}
-                  transition={{duration:0.5}}
-                  style={{ position:'absolute', inset:0, pointerEvents:'none' }}
-                />
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Corner brackets */}
-          {[
-            {top:20,left:20,   borderTopWidth:2,borderLeftWidth:2},
-            {top:20,right:20,  borderTopWidth:2,borderRightWidth:2},
-            {bottom:20,left:20, borderBottomWidth:2,borderLeftWidth:2},
-            {bottom:20,right:20,borderBottomWidth:2,borderRightWidth:2},
-          ].map((s,i)=>(
-            <div key={i} style={{
-              position:'absolute', width:28, height:28,
-              borderStyle:'solid', borderColor:'rgba(0,229,160,0.15)',
-              borderWidth:0, ...s,
-            }}/>
+          {built.map(b => (
+            <Letter key={b.i} ch={b.ch} x={b.x} w={b.w} i={b.i} st={b.st} final={b.final} />
           ))}
 
-          {/* Skip */}
-          <AnimatePresence>
-            {showSkip && (
-              <motion.button
-                initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
-                onClick={doExit}
-                style={{
-                  position:'absolute', bottom:28, right:28,
-                  background:'transparent',
-                  border:'1px solid rgba(0,229,160,0.18)',
-                  color:'rgba(90,100,120,0.8)',
-                  fontFamily:'JetBrains Mono,monospace',
-                  fontSize:'0.7rem', padding:'8px 18px',
-                  borderRadius:6, cursor:'pointer',
-                  letterSpacing:'0.1em', transition:'all 0.2s',
-                  zIndex:20,
-                }}
-                onMouseEnter={e=>{
-                  e.currentTarget.style.borderColor='#00e5a0'
-                  e.currentTarget.style.color='#00e5a0'
-                }}
-                onMouseLeave={e=>{
-                  e.currentTarget.style.borderColor='rgba(0,229,160,0.18)'
-                  e.currentTarget.style.color='rgba(90,100,120,0.8)'
-                }}
-              >
-                skip intro
-              </motion.button>
-            )}
-          </AnimatePresence>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          {cadLetter && (
+            <SurveyDrone x={cadLetter.x + cadLetter.w / 2} y={GROUND - CAP - 70} t={t} width={cadLetter.w} />
+          )}
+
+          <Arm x={left - 60} t={t} phase={0.4} />
+          <Arm x={left + width + 60} t={t} phase={1.9} flip />
+
+          <line x1={left - 130} y1={GROUND} x2={left + width + 130} y2={GROUND} className="ld-ink" />
+          {Array.from({ length: Math.ceil((width + 260) / 40) + 1 }, (_, k) => {
+            const gx = left - 130 + k * 40
+            return <line key={`tick-${gx}`} x1={gx} y1={GROUND} x2={gx} y2={GROUND + 4} className="ld-ink-thin" />
+          })}
+
+          <Conveyor t={t} x1={left - 120} x2={left + width + 120} />
+
+          <text x={left - 124} y={GROUND + 72} className="ld-label">Grid A-01</text>
+          <text x={left + width + 124} y={GROUND + 72} textAnchor="end" className="ld-label">Elev ±0.00</text>
+        </svg>
+      </div>
+
+      <div style={{ padding: '0 var(--section-px) 32px' }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-end',
+          gap: 16,
+          flexWrap: 'wrap',
+          marginBottom: 14,
+        }}>
+          <div className="type-xs" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            Site 01 · Constructing identity
+            <span style={{ width: 6, height: 6, background: 'var(--accent)', display: 'inline-block' }} />
+          </div>
+
+          <div className="type-xs" style={{ display: 'flex', gap: 18, letterSpacing: '0.1em' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 8, height: 8, border: '1px dashed var(--accent)' }} /> CAD
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{
+                width: 8, height: 8, border: '1px solid var(--text-bright)',
+                backgroundImage: 'linear-gradient(45deg, transparent 45%, var(--text-bright) 45%, var(--text-bright) 55%, transparent 55%)',
+              }} /> Structure
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 8, height: 8, background: 'var(--text-bright)' }} /> Built
+            </span>
+          </div>
+
+          <div style={{
+            fontFamily: 'IBM Plex Mono, monospace',
+            fontSize: '0.8rem',
+            fontVariantNumeric: 'tabular-nums',
+            color: 'var(--text-bright)',
+          }}>
+            {String(doneCount).padStart(2, '0')} / {String(built.length || 12).padStart(2, '0')}
+          </div>
+        </div>
+        <div style={{ height: 1, background: 'var(--border)', overflow: 'hidden' }}>
+          <div style={{
+            height: '100%',
+            width: '100%',
+            background: 'var(--accent)',
+            transform: `scaleX(${progress})`,
+            transformOrigin: 'left',
+          }} />
+        </div>
+      </div>
+    </motion.div>
   )
 }
