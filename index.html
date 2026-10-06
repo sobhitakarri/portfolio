@@ -49,10 +49,22 @@
     <!-- ═══ Fonts ═══ -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=Syne:wght@700;800&display=swap" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+    <style>
+      html, body { margin: 0; background: #f5f3ef; }
+      html[data-theme='dark'], html[data-theme='dark'] body { background: #111113; }
+      #boot {
+        position: fixed; inset: 0; display: grid; place-items: center;
+        font: 700 clamp(2.4rem, 9vw, 6.5rem)/1 'Inter Tight', 'Helvetica Neue', Arial, sans-serif;
+        letter-spacing: -0.02em; color: transparent;
+        -webkit-text-stroke: 1px #1b32e0; opacity: 0.35;
+      }
+      html[data-theme='dark'] #boot { -webkit-text-stroke-color: #6b7cff; }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div id="boot" aria-hidden="true">SOBHITA KARRI</div></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

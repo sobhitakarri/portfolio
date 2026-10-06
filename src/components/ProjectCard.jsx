@@ -2,17 +2,17 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { FiGithub, FiChevronDown, FiCalendar } from 'react-icons/fi'
 
-const ease = [0.22, 1, 0.36, 1]
+const ease = [0.16, 1, 0.3, 1]
 
 export default function ProjectCard({ project, index }) {
   const [expanded, setExpanded] = useState(false)
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 28 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ delay: index * 0.06, duration: 0.5, ease }}
+      viewport={{ once: true, margin: '-10% 0px' }}
+      transition={{ delay: Math.min(index * 0.08, 0.32), duration: 0.85, ease }}
       style={{
         borderTop: '1px solid var(--border)',
         borderBottom: '1px solid var(--border)',

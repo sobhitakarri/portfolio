@@ -8,6 +8,7 @@ const FILTERS = ['All', 'Autonomy', 'Embedded', 'Hardware']
 export default function Projects() {
   const [filter, setFilter] = useState('All')
   const titleRef = useScrollFade()
+  const filtersRef = useScrollFade(0.12)
 
   const filtered = filter === 'All'
     ? projects
@@ -23,7 +24,11 @@ export default function Projects() {
           <p className="section-desc">From autonomous flight systems to hardware accelerators.</p>
         </div>
 
-        <div style={{ display: 'flex', gap: 0, marginBottom: 40, flexWrap: 'wrap', borderBottom: '1px solid var(--border)' }}>
+        <div
+          ref={filtersRef}
+          className="fade-up fade-up-delay-1"
+          style={{ display: 'flex', gap: 0, marginBottom: 40, flexWrap: 'wrap', borderBottom: '1px solid var(--border)' }}
+        >
           {FILTERS.map(f => {
             const isActive = filter === f
             return (

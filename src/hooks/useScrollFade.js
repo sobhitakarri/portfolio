@@ -1,15 +1,20 @@
 import { useEffect, useRef } from 'react'
 
 /**
- * Fade-up on scroll using IntersectionObserver
- * Attach the returned ref to any element you want to animate in.
+ * Editorial scroll reveal — fades up + unblurs once in view.
+ * rootMargin keeps the trigger slightly lazy (more of the block visible).
  */
-export function useScrollFade(threshold = 0.15) {
+export function useScrollFade(threshold = 0.18) {
   const ref = useRef(null)
 
   useEffect(() => {
     const el = ref.current
     if (!el) return
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      el.classList.add('visible')
+      return
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -18,7 +23,10 @@ export function useScrollFade(threshold = 0.15) {
           observer.unobserve(el)
         }
       },
-      { threshold }
+      {
+        threshold,
+        rootMargin: '0px 0px -12% 0px',
+      }
     )
 
     observer.observe(el)

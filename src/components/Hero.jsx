@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { FiArrowDown, FiEye, FiNavigation, FiSettings, FiCpu, FiBox } from 'react-icons/fi'
-const ease = [0.22, 1, 0.36, 1]
+
+const ease = [0.16, 1, 0.3, 1]
 
 const ICONS = [
   { icon: FiEye,        label: 'Perception' },
@@ -10,7 +12,28 @@ const ICONS = [
   { icon: FiBox,        label: 'Simulation' },
 ]
 
-export default function Hero() {
+export default function Hero({ enter = true }) {
+  const [laser, setLaser] = useState(false)
+  const [sliced, setSliced] = useState(false)
+
+  useEffect(() => {
+    if (!enter) {
+      setLaser(false)
+      setSliced(false)
+      return
+    }
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setSliced(true)
+      return
+    }
+    const t1 = window.setTimeout(() => setLaser(true), 120)
+    const t2 = window.setTimeout(() => setSliced(true), 120 + 920)
+    return () => {
+      window.clearTimeout(t1)
+      window.clearTimeout(t2)
+    }
+  }, [enter])
+
   return (
     <section
       id="hero"
@@ -38,27 +61,39 @@ export default function Hero() {
           <motion.p
             className="section-label"
             initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.08, duration: 0.5, ease }}
-            style={{ marginBottom: 20 }}
+            animate={enter ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
+            transition={{ delay: enter ? 0.05 : 0, duration: 0.55, ease }}
+            style={{ display: 'flex', marginBottom: 20 }}
           >
             01 Intro · Open to work
           </motion.p>
 
-          <motion.h1
-            className="type-display display-slice"
-            initial={{ opacity: 0, y: 28 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.14, duration: 0.7, ease }}
-            style={{ marginBottom: 18, maxWidth: '12ch' }}
-          >
-            Sobhita Karri
-          </motion.h1>
+          <div className="hero-name-wrap">
+            <h1
+              id="hero-name"
+              className={`type-display${sliced ? ' display-slice' : ''}`}
+              style={{
+                opacity: enter ? 1 : 0,
+                transition: 'none',
+                pointerEvents: enter ? 'auto' : 'none',
+              }}
+              aria-hidden={!enter}
+            >
+              Sobhita Karri
+            </h1>
+            {laser && (
+              <>
+                <span className="name-laser-glow" aria-hidden />
+                <span className="name-laser" aria-hidden />
+                <span className="name-laser-spark" aria-hidden />
+              </>
+            )}
+          </div>
 
           <motion.p
             initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.26, duration: 0.55, ease }}
+            animate={enter ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
+            transition={{ delay: enter ? 0.35 : 0, duration: 0.55, ease }}
             style={{
               fontFamily: 'Inter Tight, sans-serif',
               fontSize: 'clamp(0.78rem, 1.5vw, 0.92rem)',
@@ -80,8 +115,8 @@ export default function Hero() {
           <motion.p
             className="type-body"
             initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.36, duration: 0.55, ease }}
+            animate={enter ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
+            transition={{ delay: enter ? 0.45 : 0, duration: 0.55, ease }}
             style={{
               color: 'var(--text-muted)',
               maxWidth: '48ch',
@@ -96,8 +131,8 @@ export default function Hero() {
 
           <motion.div
             initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.46, duration: 0.5, ease }}
+            animate={enter ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+            transition={{ delay: enter ? 0.55 : 0, duration: 0.5, ease }}
             style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}
           >
             <button
@@ -114,8 +149,8 @@ export default function Hero() {
           <motion.div
             className="hero-icons"
             initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.56, duration: 0.55, ease }}
+            animate={enter ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
+            transition={{ delay: enter ? 0.65 : 0, duration: 0.55, ease }}
           >
             {ICONS.map(({ icon: Icon, label }) => (
               <div key={label} className="hero-icon-item">

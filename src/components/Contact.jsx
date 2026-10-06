@@ -36,6 +36,7 @@ const CHANNELS = [
 
 export default function Contact() {
   const titleRef = useScrollFade()
+  const bodyRef  = useScrollFade(0.12)
   const [form, setForm]     = useState({ name: '', email: '', message: '' })
   const [status, setStatus] = useState('idle')
   const [output, setOutput] = useState([])
@@ -77,11 +78,15 @@ export default function Contact() {
           <p className="section-desc">Open for collaborations, internships, and interesting conversations.</p>
         </div>
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-          gap: 48,
-        }}>
+        <div
+          ref={bodyRef}
+          className="fade-up fade-up-delay-1"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: 48,
+          }}
+        >
           <div style={{ borderTop: '1px solid var(--border)' }}>
             <form onSubmit={handleSubmit}>
               {FIELDS.map(field => (

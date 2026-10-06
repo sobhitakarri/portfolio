@@ -40,7 +40,7 @@ const DOMAINS = [
   },
 ]
 
-const ease = [0.22, 1, 0.36, 1]
+const ease = [0.16, 1, 0.3, 1]
 
 export default function Domains() {
   const titleRef = useScrollFade()
@@ -62,10 +62,10 @@ export default function Domains() {
           {DOMAINS.map((d, i) => (
             <motion.div
               key={d.title}
-              initial={{ opacity: 0, y: 14 }}
+              initial={{ opacity: 0, y: 28 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: Math.min(i * 0.04, 0.24), duration: 0.5, ease }}
+              viewport={{ once: true, margin: '-10% 0px' }}
+              transition={{ delay: Math.min(i * 0.07, 0.35), duration: 0.85, ease }}
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'minmax(0, 1fr)',

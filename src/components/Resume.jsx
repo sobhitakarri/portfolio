@@ -3,6 +3,7 @@ import { FiDownload, FiFile } from 'react-icons/fi'
 
 export default function Resume() {
   const ref = useScrollFade()
+  const cardRef = useScrollFade(0.12)
 
   return (
     <section id="resume" style={{ position: 'relative', zIndex: 2 }}>
@@ -14,11 +15,15 @@ export default function Resume() {
           <p className="section-desc">Academic and project record in one place.</p>
         </div>
 
-        <div style={{
-          border: '1px solid var(--border)',
-          overflow: 'hidden',
-          background: 'var(--bg-surface)',
-        }}>
+        <div
+          ref={cardRef}
+          className="fade-up fade-up-delay-1"
+          style={{
+            border: '1px solid var(--border)',
+            overflow: 'hidden',
+            background: 'var(--bg-surface)',
+          }}
+        >
           <div style={{
             padding: '14px 22px',
             borderBottom: '1px solid var(--border)',
