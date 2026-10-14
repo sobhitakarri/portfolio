@@ -1,5 +1,5 @@
 # Sobhita Karri — Portfolio
-
+ 
 Robotics & autonomous systems portfolio. Minimal editorial UI with a construction-site loader, full-page scroll flight path, and light/dark theme.
 
 **Live:** [https://sobhitakarri.github.io/portfolio/](https://sobhitakarri.github.io/portfolio/)
