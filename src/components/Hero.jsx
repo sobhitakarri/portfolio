@@ -141,9 +141,12 @@ export default function Hero({ enter = true }) {
             >
               View Work
             </button>
-            <a href={`${import.meta.env.BASE_URL}resume.pdf`} target="_blank" rel="noopener noreferrer" className="btn-outline">
+            <button
+              onClick={() => document.querySelector('#resume')?.scrollIntoView({ behavior: 'smooth' })}
+              className="btn-outline"
+            >
               Resume
-            </a>
+            </button>
           </motion.div>
 
           <motion.div

@@ -122,9 +122,11 @@ export default function Navbar() {
             </button>
 
             <a
-              href={`${import.meta.env.BASE_URL}resume.pdf`}
-              target="_blank"
-              rel="noopener noreferrer"
+              href="#resume"
+              onClick={(e) => {
+                e.preventDefault()
+                scrollTo('#resume')
+              }}
               className="hidden md:inline-flex"
               style={{
                 ...navLinkStyle,
@@ -199,15 +201,13 @@ export default function Navbar() {
                 {link.label}
               </motion.button>
             ))}
-            <a
-              href={`${import.meta.env.BASE_URL}resume.pdf`}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              onClick={() => scrollTo('#resume')}
               className="btn-primary"
               style={{ marginTop: 28, alignSelf: 'flex-start' }}
             >
               Resume
-            </a>
+            </button>
             <p style={{
               marginTop: 'auto',
               fontFamily: 'IBM Plex Mono, monospace',

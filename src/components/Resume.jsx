@@ -1,9 +1,11 @@
 import { useScrollFade } from '../hooks/useScrollFade'
-import { FiDownload, FiFile } from 'react-icons/fi'
+import { FiDownload, FiFile, FiExternalLink } from 'react-icons/fi'
 
 export default function Resume() {
   const ref = useScrollFade()
   const cardRef = useScrollFade(0.12)
+
+  const resumeUrl = `${import.meta.env.BASE_URL}resume.pdf`
 
   return (
     <section id="resume" style={{ position: 'relative', zIndex: 2 }}>
@@ -42,29 +44,65 @@ export default function Resume() {
                 Sobhita_Karri_Resume.pdf
               </span>
             </div>
-            <a
-              href={`${import.meta.env.BASE_URL}resume.pdf`}
-              download="Sobhita_Karri_Resume.pdf"
-              className="btn-outline"
-              style={{ fontSize: '0.7rem', padding: '8px 14px', gap: 6 }}
-            >
-              <FiDownload size={12} />
-              Download
-            </a>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <a
+                href={resumeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-outline"
+                style={{ fontSize: '0.7rem', padding: '8px 14px', gap: 6 }}
+              >
+                <FiExternalLink size={12} />
+                Open
+              </a>
+              <a
+                href={resumeUrl}
+                download="Sobhita_Karri_Resume.pdf"
+                className="btn-outline"
+                style={{ fontSize: '0.7rem', padding: '8px 14px', gap: 6 }}
+              >
+                <FiDownload size={12} />
+                Download
+              </a>
+            </div>
           </div>
 
-          <iframe
-            src={`${import.meta.env.BASE_URL}resume.pdf`}
-            title="Sobhita Karri Resume"
+          <object
+            data={resumeUrl}
+            type="application/pdf"
             style={{
               width: '100%',
-              height: '75vh',
-              minHeight: 480,
-              border: 'none',
+              height: '80vh',
+              minHeight: 520,
               display: 'block',
               background: 'var(--bg-elevated)',
             }}
-          />
+          >
+            <iframe
+              src={resumeUrl}
+              title="Sobhita Karri Resume"
+              style={{
+                width: '100%',
+                height: '80vh',
+                minHeight: 520,
+                border: 'none',
+                display: 'block',
+                background: 'var(--bg-elevated)',
+              }}
+            >
+              <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <p style={{ marginBottom: 16 }}>Inline PDF preview is not supported on this device.</p>
+                <a
+                  href={resumeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary"
+                >
+                  View Resume
+                </a>
+              </div>
+            </iframe>
+          </object>
         </div>
       </div>
     </section>
