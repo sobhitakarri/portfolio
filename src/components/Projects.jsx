@@ -2,11 +2,14 @@ import { useState } from 'react'
 import { useScrollFade } from '../hooks/useScrollFade'
 import { projects } from '../data/projects'
 import ProjectCard from './ProjectCard'
+import ProjectModal from './ProjectModal'
 
-const FILTERS = ['All', 'Autonomy', 'Embedded', 'Hardware']
+const FILTERS = ['All', 'Autonomy', 'Robotics', 'Embedded', 'Hardware']
 
 export default function Projects() {
   const [filter, setFilter] = useState('All')
+  const [selectedProject, setSelectedProject] = useState(null)
+
   const titleRef = useScrollFade()
   const filtersRef = useScrollFade(0.12)
 
@@ -21,7 +24,7 @@ export default function Projects() {
         <div ref={titleRef} className="fade-up">
           <p className="section-label">04 Projects</p>
           <h2 className="section-heading">What I&apos;ve built</h2>
-          <p className="section-desc">From autonomous flight systems to hardware accelerators.</p>
+          <p className="section-desc">From autonomous flight systems to robotic simulation cells and hardware accelerators.</p>
         </div>
 
         <div
@@ -31,6 +34,7 @@ export default function Projects() {
         >
           {FILTERS.map(f => {
             const isActive = filter === f
+            const count = f === 'All' ? projects.length : projects.filter(p => p.category === f).length
             return (
               <button
                 key={f}
@@ -49,6 +53,9 @@ export default function Projects() {
                   textTransform: 'uppercase',
                   cursor: 'pointer',
                   transition: 'color 0.2s ease',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
                 }}
                 onMouseEnter={e => {
                   if (!isActive) e.currentTarget.style.color = 'var(--text-muted)'
@@ -57,7 +64,15 @@ export default function Projects() {
                   if (!isActive) e.currentTarget.style.color = 'var(--text-faint)'
                 }}
               >
-                {f}
+                <span>{f}</span>
+                <span style={{
+                  fontFamily: 'IBM Plex Mono, monospace',
+                  fontSize: '0.62rem',
+                  color: isActive ? 'var(--accent)' : 'var(--text-faint)',
+                  opacity: isActive ? 1 : 0.7,
+                }}>
+                  {count}
+                </span>
               </button>
             )
           })}
@@ -65,11 +80,16 @@ export default function Projects() {
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-          gap: 0,
+          gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+          gap: 24,
         }}>
           {filtered.map((project, i) => (
-            <ProjectCard key={project.id} project={project} index={i} />
+            <ProjectCard
+              key={project.id}
+              project={project}
+              index={i}
+              onOpenDetails={setSelectedProject}
+            />
           ))}
         </div>
 
@@ -84,6 +104,13 @@ export default function Projects() {
           </div>
         )}
       </div>
+
+      {/* Internal Project Details Window Modal */}
+      <ProjectModal
+        project={selectedProject}
+        isOpen={Boolean(selectedProject)}
+        onClose={() => setSelectedProject(null)}
+      />
     </section>
   )
 }
