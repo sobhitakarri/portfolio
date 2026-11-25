@@ -298,22 +298,39 @@ export default function ProjectModal({ project, isOpen, onClose }) {
                   </div>
                 )}
 
-                {project.github && (
-                  <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-                    <a
-                      href={project.github}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-outline"
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 8,
-                        fontSize: '0.8rem', padding: '10px 20px',
-                        background: 'var(--accent-faint)', borderColor: 'var(--accent)',
-                        color: 'var(--accent)', fontWeight: 600, textDecoration: 'none',
-                      }}
-                    >
-                      <FiGithub size={15} /> View on GitHub <FiExternalLink size={12} />
-                    </a>
+                {(project.github || project.demo) && (
+                  <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                    {project.github && (
+                      <a
+                        href={project.github}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-outline"
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 8,
+                          fontSize: '0.8rem', padding: '10px 20px',
+                          background: 'var(--accent-faint)', borderColor: 'var(--accent)',
+                          color: 'var(--accent)', fontWeight: 600, textDecoration: 'none',
+                        }}
+                      >
+                        <FiGithub size={15} /> View on GitHub <FiExternalLink size={12} />
+                      </a>
+                    )}
+                    {project.demo && (
+                      <a
+                        href={project.demo}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-outline"
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 8,
+                          fontSize: '0.8rem', padding: '10px 20px',
+                          textDecoration: 'none',
+                        }}
+                      >
+                        {project.demoLabel || 'Live Demo'} <FiExternalLink size={12} />
+                      </a>
+                    )}
                   </div>
                 )}
               </div>
